@@ -1,12 +1,12 @@
-# Requirements Document: KisanSahayak
+# Requirements Document: KhethAi
 
 ## Introduction
 
-KisanSahayak is an AI-powered crop disease diagnosis application designed specifically for small-holder farmers in rural India. The system enables farmers to diagnose crop diseases using smartphone cameras, receive treatment recommendations, access weather forecasts, and obtain market price information. The application addresses the unique challenges of rural India including low literacy rates, limited internet connectivity, and diverse linguistic needs.
+KhethAi is an AI-powered crop disease diagnosis application designed specifically for small-holder farmers in rural India. The system enables farmers to diagnose crop diseases using smartphone cameras, receive treatment recommendations, access weather forecasts, and obtain market price information. The application addresses the unique challenges of rural India including low literacy rates, limited internet connectivity, and diverse linguistic needs.
 
 ## Glossary
 
-- **KisanSahayak_System**: The complete application including frontend, backend, AI/ML components, and integrations
+- **KhethAi_System**: The complete application including frontend, backend, AI/ML components, and integrations
 - **User**: A registered farmer using the application
 - **Disease_Detection_Engine**: The AI/ML component that analyzes crop images and identifies diseases
 - **Offline_Sync_Manager**: The component that manages data synchronization between offline and online states
@@ -37,8 +37,8 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 2. WHEN a user enters the correct OTP within 5 minutes, THE Authentication_Service SHALL create a user account and generate a JWT token valid for 30 days
 3. WHEN a user enters an incorrect OTP, THE Authentication_Service SHALL allow up to 3 retry attempts before blocking the phone number for 1 hour
 4. WHEN a registered user logs in, THE Authentication_Service SHALL verify the OTP and issue a new JWT token
-5. WHEN a JWT token expires, THE KisanSahayak_System SHALL prompt the user to re-authenticate
-6. WHERE offline mode is active, THE KisanSahayak_System SHALL allow read-only access to previously synced data without authentication
+5. WHEN a JWT token expires, THE KhethAi_System SHALL prompt the user to re-authenticate
+6. WHERE offline mode is active, THE KhethAi_System SHALL allow read-only access to previously synced data without authentication
 
 ### Requirement 2: Multi-Language Support
 
@@ -48,10 +48,10 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. THE KisanSahayak_System SHALL support at least 8 Indian languages: Hindi, English, Tamil, Telugu, Kannada, Marathi, Bengali, and Gujarati
-2. WHEN a user selects a language during registration, THE KisanSahayak_System SHALL persist this preference and display all UI text in the selected language
-3. WHEN a user changes their language preference, THE KisanSahayak_System SHALL update all UI elements within 2 seconds without requiring app restart
-4. THE KisanSahayak_System SHALL translate all system messages, labels, buttons, and notifications into the selected language
+1. THE KhethAi_System SHALL support at least 8 Indian languages: Hindi, English, Tamil, Telugu, Kannada, Marathi, Bengali, and Gujarati
+2. WHEN a user selects a language during registration, THE KhethAi_System SHALL persist this preference and display all UI text in the selected language
+3. WHEN a user changes their language preference, THE KhethAi_System SHALL update all UI elements within 2 seconds without requiring app restart
+4. THE KhethAi_System SHALL translate all system messages, labels, buttons, and notifications into the selected language
 5. THE Treatment_Recommender SHALL provide treatment recommendations in the user's selected language
 6. THE Voice_Interface SHALL support speech recognition and synthesis in all supported languages
 
@@ -63,12 +63,12 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. WHEN a user captures or selects a crop image, THE KisanSahayak_System SHALL validate that the image is between 100KB and 10MB in size
+1. WHEN a user captures or selects a crop image, THE KhethAi_System SHALL validate that the image is between 100KB and 10MB in size
 2. WHEN a valid image is uploaded, THE Disease_Detection_Engine SHALL process the image and return a diagnosis within 5 seconds
 3. WHEN the Disease_Detection_Engine analyzes an image, THE System SHALL return the disease name, confidence score, and affected crop part
 4. IF the confidence score is below 80%, THEN THE Disease_Detection_Engine SHALL return multiple possible diagnoses ranked by confidence
-5. WHEN a diagnosis is completed, THE KisanSahayak_System SHALL store the image in Image_Storage and save the diagnosis record in User_Database
-6. WHERE offline mode is active, THE KisanSahayak_System SHALL queue the image locally and process it when connectivity is restored
+5. WHEN a diagnosis is completed, THE KhethAi_System SHALL store the image in Image_Storage and save the diagnosis record in User_Database
+6. WHERE offline mode is active, THE KhethAi_System SHALL queue the image locally and process it when connectivity is restored
 7. THE Disease_Detection_Engine SHALL support detection of at least 50 common crop diseases across major Indian crops (rice, wheat, cotton, sugarcane, tomato, potato)
 8. WHEN an image is too blurry or poorly lit, THE Disease_Detection_Engine SHALL reject it with specific feedback on image quality requirements
 
@@ -84,7 +84,7 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 2. THE Treatment_Recommender SHALL recommend both organic and chemical treatment options for each disease
 3. WHEN providing treatment recommendations, THE Treatment_Recommender SHALL include product names, application methods, dosage, timing, and safety precautions
 4. THE Treatment_Recommender SHALL provide recommendations in the user's selected language
-5. WHEN a treatment is recommended, THE KisanSahayak_System SHALL display estimated costs and nearby availability of recommended products
+5. WHEN a treatment is recommended, THE KhethAi_System SHALL display estimated costs and nearby availability of recommended products
 6. THE Treatment_Recommender SHALL include preventive measures to avoid future occurrences of the disease
 
 ### Requirement 5: Offline Mode and Data Synchronization
@@ -96,12 +96,12 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 #### Acceptance Criteria
 
 1. WHEN the application is first loaded with internet connectivity, THE PWA_Service_Worker SHALL cache all essential assets, UI components, and user data
-2. WHEN internet connectivity is lost, THE KisanSahayak_System SHALL display an offline indicator and continue functioning with cached data
-3. WHILE offline, THE KisanSahayak_System SHALL allow users to capture images, view previous diagnoses, access farm data, and view cached weather and market information
+2. WHEN internet connectivity is lost, THE KhethAi_System SHALL display an offline indicator and continue functioning with cached data
+3. WHILE offline, THE KhethAi_System SHALL allow users to capture images, view previous diagnoses, access farm data, and view cached weather and market information
 4. WHEN a user performs actions offline, THE Offline_Sync_Manager SHALL queue all changes in IndexedDB with timestamps
 5. WHEN internet connectivity is restored, THE Offline_Sync_Manager SHALL automatically sync all queued data to the backend within 60 seconds
 6. IF sync conflicts occur, THEN THE Offline_Sync_Manager SHALL prioritize the most recent timestamp and notify the user of any data conflicts
-7. THE KisanSahayak_System SHALL store at least 30 days of historical data locally for offline access
+7. THE KhethAi_System SHALL store at least 30 days of historical data locally for offline access
 8. WHEN storage quota is exceeded, THE Offline_Sync_Manager SHALL remove the oldest cached data while preserving critical user data
 
 ### Requirement 6: Voice Input and Output
@@ -193,13 +193,13 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. THE KisanSahayak_System SHALL be installable as a PWA on Android and iOS devices
+1. THE KhethAi_System SHALL be installable as a PWA on Android and iOS devices
 2. WHEN a user visits the application, THE System SHALL prompt them to install it to their home screen after 2 visits
 3. THE PWA_Service_Worker SHALL enable the application to load instantly even on slow networks
-4. THE KisanSahayak_System SHALL function fully offline after the initial installation and data sync
+4. THE KhethAi_System SHALL function fully offline after the initial installation and data sync
 5. THE PWA_Service_Worker SHALL implement a cache-first strategy for static assets and network-first strategy for dynamic data
-6. THE KisanSahayak_System SHALL display a custom splash screen during app launch
-7. THE KisanSahayak_System SHALL support background sync for queued operations when connectivity is restored
+6. THE KhethAi_System SHALL display a custom splash screen during app launch
+7. THE KhethAi_System SHALL support background sync for queued operations when connectivity is restored
 
 ### Requirement 12: Performance and Responsiveness
 
@@ -209,12 +209,12 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. THE KisanSahayak_System SHALL load the initial page within 3 seconds on a 3G connection
+1. THE KhethAi_System SHALL load the initial page within 3 seconds on a 3G connection
 2. THE Disease_Detection_Engine SHALL process and return image diagnosis results within 5 seconds
-3. THE KisanSahayak_System SHALL maintain a Lighthouse performance score above 90
+3. THE KhethAi_System SHALL maintain a Lighthouse performance score above 90
 4. WHEN a user navigates between pages, THE System SHALL render the new page within 1 second
-5. THE KisanSahayak_System SHALL optimize images to reduce bandwidth usage by at least 60% without visible quality loss
-6. THE KisanSahayak_System SHALL function smoothly on devices with as low as 2GB RAM and Android 8.0
+5. THE KhethAi_System SHALL optimize images to reduce bandwidth usage by at least 60% without visible quality loss
+6. THE KhethAi_System SHALL function smoothly on devices with as low as 2GB RAM and Android 8.0
 7. THE Disease_Detection_Engine SHALL use TensorFlow.js with WebGL acceleration for client-side inference when possible
 
 ### Requirement 13: Security and Data Privacy
@@ -225,15 +225,15 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. THE KisanSahayak_System SHALL encrypt all data in transit using TLS 1.3
+1. THE KhethAi_System SHALL encrypt all data in transit using TLS 1.3
 2. THE User_Database SHALL encrypt all personally identifiable information (PII) at rest using AES-256 encryption
 3. THE Authentication_Service SHALL implement rate limiting of 5 OTP requests per phone number per hour to prevent abuse
-4. THE KisanSahayak_System SHALL not share user data with third parties without explicit user consent
+4. THE KhethAi_System SHALL not share user data with third parties without explicit user consent
 5. WHEN a user requests data deletion, THE System SHALL permanently delete all user data within 30 days
-6. THE KisanSahayak_System SHALL implement Content Security Policy (CSP) headers to prevent XSS attacks
+6. THE KhethAi_System SHALL implement Content Security Policy (CSP) headers to prevent XSS attacks
 7. THE Image_Storage SHALL use signed URLs with 1-hour expiration for secure image access
-8. THE KisanSahayak_System SHALL log all authentication attempts and flag suspicious activity
-9. THE KisanSahayak_System SHALL comply with Indian data protection regulations and GDPR for EU users
+8. THE KhethAi_System SHALL log all authentication attempts and flag suspicious activity
+9. THE KhethAi_System SHALL comply with Indian data protection regulations and GDPR for EU users
 
 ### Requirement 14: Scalability and Availability
 
@@ -243,12 +243,12 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. THE KisanSahayak_System SHALL support at least 100,000 concurrent users without performance degradation
-2. THE KisanSahayak_System SHALL maintain 99.5% uptime measured monthly
+1. THE KhethAi_System SHALL support at least 100,000 concurrent users without performance degradation
+2. THE KhethAi_System SHALL maintain 99.5% uptime measured monthly
 3. WHEN traffic spikes occur, THE System SHALL auto-scale backend resources to handle up to 10x normal load
 4. THE Disease_Detection_Engine SHALL process at least 1,000 image diagnoses per minute during peak hours
 5. THE User_Database SHALL handle at least 10,000 read/write operations per second
-6. THE KisanSahayak_System SHALL implement database replication across multiple AWS regions for disaster recovery
+6. THE KhethAi_System SHALL implement database replication across multiple AWS regions for disaster recovery
 7. WHEN a service component fails, THE System SHALL failover to backup instances within 30 seconds
 
 ### Requirement 15: Accessibility and Usability
@@ -259,14 +259,14 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. THE KisanSahayak_System SHALL use icons and visual indicators alongside text for all major actions
-2. THE KisanSahayak_System SHALL maintain minimum touch target sizes of 48x48 pixels for all interactive elements
-3. THE KisanSahayak_System SHALL use high contrast colors (minimum 4.5:1 ratio) for readability in bright sunlight
-4. THE KisanSahayak_System SHALL limit text input requirements and prefer selection-based inputs
+1. THE KhethAi_System SHALL use icons and visual indicators alongside text for all major actions
+2. THE KhethAi_System SHALL maintain minimum touch target sizes of 48x48 pixels for all interactive elements
+3. THE KhethAi_System SHALL use high contrast colors (minimum 4.5:1 ratio) for readability in bright sunlight
+4. THE KhethAi_System SHALL limit text input requirements and prefer selection-based inputs
 5. WHEN errors occur, THE System SHALL display simple, actionable error messages in the user's language
-6. THE KisanSahayak_System SHALL provide contextual help and tooltips for complex features
-7. THE KisanSahayak_System SHALL complete critical user flows (disease diagnosis) in maximum 3 steps
-8. THE KisanSahayak_System SHALL support screen readers for visually impaired users
+6. THE KhethAi_System SHALL provide contextual help and tooltips for complex features
+7. THE KhethAi_System SHALL complete critical user flows (disease diagnosis) in maximum 3 steps
+8. THE KhethAi_System SHALL support screen readers for visually impaired users
 
 ### Requirement 16: Push Notifications and Alerts
 
@@ -308,12 +308,12 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. WHEN a treatment is recommended, THE KisanSahayak_System SHALL display relevant products (pesticides, fertilizers, equipment) with prices and nearby availability
-2. THE KisanSahayak_System SHALL partner with agri-input companies to provide verified product information
-3. THE KisanSahayak_System SHALL allow users to purchase recommended products through integrated e-commerce links
-4. THE KisanSahayak_System SHALL earn commission on product sales through affiliate partnerships
-5. THE KisanSahayak_System SHALL display product ratings and reviews from other farmers
-6. THE KisanSahayak_System SHALL recommend products based on farm size, crop type, and disease severity
+1. WHEN a treatment is recommended, THE KhethAi_System SHALL display relevant products (pesticides, fertilizers, equipment) with prices and nearby availability
+2. THE KhethAi_System SHALL partner with agri-input companies to provide verified product information
+3. THE KhethAi_System SHALL allow users to purchase recommended products through integrated e-commerce links
+4. THE KhethAi_System SHALL earn commission on product sales through affiliate partnerships
+5. THE KhethAi_System SHALL display product ratings and reviews from other farmers
+6. THE KhethAi_System SHALL recommend products based on farm size, crop type, and disease severity
 
 ### Requirement 19: Insurance and Credit Integration
 
@@ -323,11 +323,11 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. THE KisanSahayak_System SHALL integrate with crop insurance providers to display available insurance schemes
+1. THE KhethAi_System SHALL integrate with crop insurance providers to display available insurance schemes
 2. WHEN a user experiences crop damage, THE System SHALL facilitate insurance claim filing with disease diagnosis as supporting evidence
-3. THE KisanSahayak_System SHALL partner with financial institutions to offer credit products based on farm data and crop health
-4. THE KisanSahayak_System SHALL display eligibility criteria and application processes for government subsidy schemes
-5. THE KisanSahayak_System SHALL maintain a record of insurance policies and credit applications for user reference
+3. THE KhethAi_System SHALL partner with financial institutions to offer credit products based on farm data and crop health
+4. THE KhethAi_System SHALL display eligibility criteria and application processes for government subsidy schemes
+5. THE KhethAi_System SHALL maintain a record of insurance policies and credit applications for user reference
 
 ### Requirement 20: Satellite Imagery and Remote Sensing
 
@@ -337,11 +337,11 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. THE KisanSahayak_System SHALL integrate with ISRO Bhuvan API to fetch satellite imagery for user farm locations
+1. THE KhethAi_System SHALL integrate with ISRO Bhuvan API to fetch satellite imagery for user farm locations
 2. WHEN a user views their farm map, THE System SHALL overlay recent satellite imagery (updated weekly)
-3. THE KisanSahayak_System SHALL calculate and display vegetation indices (NDVI) to indicate crop health
-4. THE KisanSahayak_System SHALL highlight zones with declining vegetation health for proactive inspection
-5. THE KisanSahayak_System SHALL provide time-series satellite imagery to track crop growth over the season
+3. THE KhethAi_System SHALL calculate and display vegetation indices (NDVI) to indicate crop health
+4. THE KhethAi_System SHALL highlight zones with declining vegetation health for proactive inspection
+5. THE KhethAi_System SHALL provide time-series satellite imagery to track crop growth over the season
 
 ### Requirement 21: Community and Knowledge Sharing
 
@@ -351,12 +351,12 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. THE KisanSahayak_System SHALL provide a community forum where farmers can post questions and share experiences
-2. THE KisanSahayak_System SHALL allow agricultural experts to provide verified answers to farmer questions
-3. THE KisanSahayak_System SHALL support posting of images and videos in community discussions
-4. THE KisanSahayak_System SHALL moderate community content to prevent spam and misinformation
-5. THE KisanSahayak_System SHALL allow farmers to follow topics and receive notifications for new discussions
-6. THE KisanSahayak_System SHALL provide a knowledge base of articles and videos on best farming practices
+1. THE KhethAi_System SHALL provide a community forum where farmers can post questions and share experiences
+2. THE KhethAi_System SHALL allow agricultural experts to provide verified answers to farmer questions
+3. THE KhethAi_System SHALL support posting of images and videos in community discussions
+4. THE KhethAi_System SHALL moderate community content to prevent spam and misinformation
+5. THE KhethAi_System SHALL allow farmers to follow topics and receive notifications for new discussions
+6. THE KhethAi_System SHALL provide a knowledge base of articles and videos on best farming practices
 
 ### Requirement 22: Data Export and Reporting
 
@@ -366,11 +366,11 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. THE KisanSahayak_System SHALL allow users to export their farm data including crop history, disease records, and treatment logs
-2. THE KisanSahayak_System SHALL generate PDF reports with farm summary, crop health status, and productivity metrics
-3. THE KisanSahayak_System SHALL support data export in CSV format for use in other applications
+1. THE KhethAi_System SHALL allow users to export their farm data including crop history, disease records, and treatment logs
+2. THE KhethAi_System SHALL generate PDF reports with farm summary, crop health status, and productivity metrics
+3. THE KhethAi_System SHALL support data export in CSV format for use in other applications
 4. WHEN a user requests a report, THE System SHALL generate it within 10 seconds
-5. THE KisanSahayak_System SHALL allow users to share reports via WhatsApp, email, or download to device
+5. THE KhethAi_System SHALL allow users to share reports via WhatsApp, email, or download to device
 
 ### Requirement 23: AI Model Training and Improvement
 
@@ -395,11 +395,11 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 
 #### Acceptance Criteria
 
-1. THE KisanSahayak_System SHALL customize disease prevalence information based on user's geographic location
+1. THE KhethAi_System SHALL customize disease prevalence information based on user's geographic location
 2. THE Treatment_Recommender SHALL provide region-specific treatment recommendations based on local climate and soil conditions
 3. THE Market_Service SHALL prioritize displaying prices from markets nearest to the user's location
 4. THE Weather_Service SHALL provide micro-climate forecasts specific to the user's district
-5. THE KisanSahayak_System SHALL support regional crop calendars showing optimal planting and harvesting times
+5. THE KhethAi_System SHALL support regional crop calendars showing optimal planting and harvesting times
 6. THE System SHALL partner with local agricultural universities to provide region-specific advisory content
 
 ## Metrics and Success Criteria
@@ -433,4 +433,5 @@ KisanSahayak is an AI-powered crop disease diagnosis application designed specif
 - Crop loss reduction: 30% among active users
 - Time to treatment: <24 hours from diagnosis
 - Farmer income increase: 20% year-over-year
+
 - User satisfaction score: >4.5/5
