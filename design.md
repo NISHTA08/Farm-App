@@ -1,8 +1,8 @@
-# Design Document: KisanSahayak
+# Design Document: KhethAi
 
 ## Overview
 
-KisanSahayak is a Progressive Web Application (PWA) built with Next.js 14 that provides AI-powered crop disease diagnosis for Indian farmers. The system architecture follows a serverless, offline-first approach with the following key characteristics:
+KhethAi is a Progressive Web Application (PWA) built with Next.js 14 that provides AI-powered crop disease diagnosis for Indian farmers. The system architecture follows a serverless, offline-first approach with the following key characteristics:
 
 - **Frontend**: Next.js 14 with React Server Components, TypeScript, and Tailwind CSS
 - **Backend**: AWS Lambda functions with API Gateway for serverless compute
@@ -67,4 +67,5 @@ graph TB
     Lambda --> Bhuvan
     Lambda --> SMS
     SageMaker --> S3Model
+
     CloudFront --> S3Images
