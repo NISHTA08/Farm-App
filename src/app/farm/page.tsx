@@ -41,6 +41,12 @@ interface CropZone {
   crop: string;
   area: string;
   unit: "acres" | "hectares";
+  /** Optional: expected harvest in kg (legacy or computed from qty+unit). */
+  expectedYieldKg?: string;
+  /** Optional: expected yield quantity (number of kg / quintals / plants). */
+  expectedYieldQty?: string;
+  /** Optional: unit for expectedYieldQty. */
+  expectedYieldUnit?: ExpectedYieldUnit;
   plantingDate: string;
   expectedHarvest: string;
   health: "healthy" | "attention" | "critical";
@@ -94,6 +100,80 @@ const CROP_META: Record<string, { color: string; short?: string }> = {
   Groundnut: { color: "#d97706", short: "Groundnut" },
 };
 
+/** Typical yield (tonnes per hectare) for Indian conditions – for estimated value. */
+const CROP_YIELD_T_PER_HA: Record<string, number> = {
+  Rice: 4,
+  Wheat: 3,
+  Cotton: 0.4,
+  Sugarcane: 70,
+  Maize: 3,
+  Tomato: 25,
+  Potato: 22,
+  Onion: 16,
+  Soybean: 1.2,
+  Groundnut: 1.5,
+};
+
+/** Approximate kg per plant/unit for "number of crops" → yield. */
+const CROP_KG_PER_PLANT: Record<string, number> = {
+  Rice: 0.02,
+  Wheat: 0.05,
+  Cotton: 0.15,
+  Sugarcane: 0.5,
+  Maize: 0.25,
+  Tomato: 0.15,
+  Potato: 0.5,
+  Onion: 0.1,
+  Soybean: 0.01,
+  Groundnut: 0.02,
+};
+
+const EXPECTED_YIELD_UNITS = ["kg", "quintals", "plants"] as const;
+type ExpectedYieldUnit = (typeof EXPECTED_YIELD_UNITS)[number];
+
+function getZoneProgress(zone: CropZone): { progressPct: number; hasDates: boolean } {
+  if (!zone.plantingDate || !zone.expectedHarvest) return { progressPct: 0, hasDates: false };
+  const start = new Date(zone.plantingDate).getTime();
+  const end = new Date(zone.expectedHarvest).getTime();
+  const now = Date.now();
+  if (end <= start) return { progressPct: 100, hasDates: true };
+  if (now <= start) return { progressPct: 0, hasDates: true };
+  if (now >= end) return { progressPct: 100, hasDates: true };
+  const progressPct = Math.round(((now - start) / (end - start)) * 100);
+  return { progressPct, hasDates: true };
+}
+
+function areaToHectares(areaStr: string, unit: "acres" | "hectares"): number {
+  const a = parseFloat(areaStr?.replace(/,/g, "") || "0");
+  if (!a || isNaN(a)) return 0;
+  return unit === "hectares" ? a : a * 0.404686;
+}
+
+/** Yield in kg for a zone: from expectedYieldQty+Unit, else expectedYieldKg (legacy), else area × yield per ha. */
+function getYieldKgForZone(zone: CropZone): number {
+  if (zone.expectedYieldUnit) {
+    // Use displayed quantity (qty input or legacy kg) so unit dropdown always affects the result
+    const raw = (zone.expectedYieldQty ?? zone.expectedYieldKg ?? "").replace(/,/g, "").trim();
+    const q = parseFloat(raw || "0");
+    if (q <= 0) return 0;
+    if (zone.expectedYieldUnit === "kg") return q;
+    if (zone.expectedYieldUnit === "quintals") return q * 100;
+    if (zone.expectedYieldUnit === "plants") return q * (CROP_KG_PER_PLANT[zone.crop] ?? 0.2);
+    return 0;
+  }
+  const manual = parseFloat(zone.expectedYieldKg?.replace(/,/g, "") || "0");
+  if (manual > 0) return manual;
+  const ha = areaToHectares(zone.area, zone.unit);
+  const yieldT = CROP_YIELD_T_PER_HA[zone.crop];
+  if (!ha || !yieldT) return 0;
+  return ha * yieldT * 1000;
+}
+
+interface MandiPriceRow {
+  crop: string;
+  modal_price: number;
+}
+
 export default function FarmPage() {
   const { t } = useI18n();
   const [farm, setFarm] = useState<FarmProfile>(defaultFarm);
@@ -101,17 +181,22 @@ export default function FarmPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [mandiPrices, setMandiPrices] = useState<MandiPriceRow[]>([]);
+  const [mandiLoading, setMandiLoading] = useState(false);
   const [newZone, setNewZone] = useState({
     name: "",
     crop: "",
     area: "",
     unit: "acres" as const,
+    expectedYieldQty: "",
+    expectedYieldUnit: "plants" as ExpectedYieldUnit,
     plantingDate: "",
     expectedHarvest: "",
     health: "healthy" as const,
     notes: "",
     boundary: [] as BoundaryPoint[],
   });
+  const [cropYieldOverride, setCropYieldOverride] = useState<Record<string, string>>({});
 
   useEffect(() => {
     try {
@@ -134,6 +219,55 @@ export default function FarmPage() {
     setMounted(true);
   }, []);
 
+  const fetchMandiPrices = useCallback(async () => {
+    if (farm.zones.length === 0) return;
+    setMandiLoading(true);
+    try {
+      const res = await fetch("/api/mandi");
+      const data = await res.json();
+      if (data?.prices?.length) {
+        setMandiPrices(data.prices.map((p: { crop: string; modal_price: number }) => ({ crop: p.crop, modal_price: p.modal_price })));
+      }
+    } catch {
+      setMandiPrices([]);
+    } finally {
+      setMandiLoading(false);
+    }
+  }, [farm.zones.length]);
+
+  useEffect(() => {
+    if (mounted && farm.zones.length > 0 && mandiPrices.length === 0 && !mandiLoading) {
+      fetchMandiPrices();
+    }
+  }, [mounted, farm.zones.length, mandiPrices.length, mandiLoading, fetchMandiPrices]);
+
+  function getPriceForCrop(cropName: string): number | null {
+    const c = cropName.toLowerCase();
+    const alias: Record<string, string[]> = {
+      rice: ["rice", "paddy"],
+      wheat: ["wheat"],
+      cotton: ["cotton", "kapas"],
+      sugarcane: ["sugarcane", "sugar"],
+      maize: ["maize", "corn"],
+      tomato: ["tomato"],
+      potato: ["potato"],
+      onion: ["onion"],
+      soybean: ["soybean", "soya"],
+      groundnut: ["groundnut", "peanut", "moongphali"],
+    };
+    const keys = alias[c] || [c];
+    const found = mandiPrices.find((p) => keys.some((k) => p.crop.toLowerCase().includes(k)));
+    return found ? found.modal_price : null;
+  }
+
+  function getEstimatedValue(zone: CropZone): number | null {
+    const yieldKg = getYieldKgForZone(zone);
+    if (!yieldKg) return null;
+    const price = getPriceForCrop(zone.crop);
+    if (price == null) return null;
+    return Math.round(yieldKg * price);
+  }
+
   const save = useCallback((f: FarmProfile) => {
     setFarm(f);
     try { localStorage.setItem(FARM_KEY, JSON.stringify(f)); } catch {}
@@ -151,6 +285,8 @@ export default function FarmPage() {
       crop: "",
       area: "",
       unit: "acres",
+      expectedYieldQty: "",
+      expectedYieldUnit: "plants",
       plantingDate: "",
       expectedHarvest: "",
       health: "healthy",
@@ -161,6 +297,24 @@ export default function FarmPage() {
 
   const deleteZone = (id: string) => save({ ...farm, zones: farm.zones.filter((z) => z.id !== id) });
   const updateHealth = (id: string, h: CropZone["health"]) => save({ ...farm, zones: farm.zones.map((z) => z.id === id ? { ...z, health: h } : z) });
+  const updateZone = (id: string, patch: Partial<CropZone>) =>
+    save({ ...farm, zones: farm.zones.map((z) => z.id === id ? { ...z, ...patch } : z) });
+
+  // Yield (kg) and value by crop; support per-crop override for "reduce and check"
+  const computedYieldKgByCrop: Record<string, number> = {};
+  const computedValueByCrop: Record<string, number> = {};
+  for (const z of farm.zones) {
+    const yieldKg = getYieldKgForZone(z);
+    const v = getEstimatedValue(z);
+    if (yieldKg > 0) computedYieldKgByCrop[z.crop] = (computedYieldKgByCrop[z.crop] ?? 0) + yieldKg;
+    if (v != null) computedValueByCrop[z.crop] = (computedValueByCrop[z.crop] ?? 0) + v;
+  }
+  const cropList = Array.from(new Set(farm.zones.map((z) => z.crop)));
+  const hasZonesWithAreaAndCrop = farm.zones.some((z) => {
+    const hasQty = z.expectedYieldQty != null && z.expectedYieldUnit && parseFloat(z.expectedYieldQty || "0") > 0;
+    const hasKg = parseFloat(z.expectedYieldKg || "0") > 0;
+    return (areaToHectares(z.area, z.unit) && CROP_YIELD_T_PER_HA[z.crop]) || hasQty || hasKg;
+  });
 
   if (!mounted) return null;
 
@@ -338,8 +492,36 @@ export default function FarmPage() {
                     className="w-full px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text min-h-[44px]" />
                 </div>
                 <div>
+                  <label className="text-body-xs text-kh-text-dim mb-1 block">Unit</label>
+                  <select value={newZone.unit} onChange={(e) => setNewZone((prev) => ({ ...prev, unit: e.target.value as "acres" | "hectares" }))}
+                    className="w-full px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text min-h-[44px] [color-scheme:dark]">
+                    <option value="acres">acres</option>
+                    <option value="hectares">hectares</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-body-xs text-kh-text-dim mb-1 block">{t.farm.expectedYield} (optional)</label>
+                <div className="flex gap-2">
+                  <input type="number" min={0} placeholder="e.g. 100" value={newZone.expectedYieldQty} onChange={(e) => setNewZone((prev) => ({ ...prev, expectedYieldQty: e.target.value }))}
+                    className="flex-1 px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text min-h-[44px] [color-scheme:dark]" />
+                  <select value={newZone.expectedYieldUnit} onChange={(e) => setNewZone((prev) => ({ ...prev, expectedYieldUnit: e.target.value as ExpectedYieldUnit }))}
+                    className="px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text min-h-[44px] [color-scheme:dark]">
+                    <option value="kg">{t.farm.unitKg}</option>
+                    <option value="quintals">{t.farm.unitQuintals}</option>
+                    <option value="plants">{t.farm.unitPlants}</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="text-body-xs text-kh-text-dim mb-1 block">Planted (optional)</label>
                   <input type="date" value={newZone.plantingDate} onChange={(e) => setNewZone((prev) => ({ ...prev, plantingDate: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text min-h-[44px] [color-scheme:dark]" />
+                </div>
+                <div>
+                  <label className="text-body-xs text-kh-text-dim mb-1 block">Expected harvest (optional)</label>
+                  <input type="date" value={newZone.expectedHarvest} onChange={(e) => setNewZone((prev) => ({ ...prev, expectedHarvest: e.target.value }))}
                     className="w-full px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text min-h-[44px] [color-scheme:dark]" />
                 </div>
               </div>
@@ -386,23 +568,172 @@ export default function FarmPage() {
                       })}
                     </div>
                   )}
+                  {farm.zones.length > 0 && mandiPrices.length === 0 && !mandiLoading && (
+                    <div className="flex items-center justify-between gap-2 mb-2 p-3 rounded-lg bg-kh-surface/80 border border-kh-border">
+                      <span className="text-body-xs text-kh-text-muted">{t.farm.loadPricesToSeeValue}</span>
+                      <button type="button" onClick={fetchMandiPrices} disabled={mandiLoading}
+                        className="shrink-0 px-3 py-1.5 rounded-lg bg-kh-accent/20 text-kh-accent text-body-xs font-medium hover:bg-kh-accent/30">
+                        {t.farm.loadPrices}
+                      </button>
+                    </div>
+                  )}
+                  {hasZonesWithAreaAndCrop && (
+                    <div className="mb-3 p-3 rounded-xl border border-kh-border bg-kh-surface/60">
+                      <h4 className="text-body-sm font-semibold text-kh-text mb-2">{t.farm.estValueByCrop}</h4>
+                      {cropList.length > 0 ? (
+                        <div className="space-y-3">
+                          {cropList.map((crop) => {
+                            const meta = CROP_META[crop] || { color: "#64748b" };
+                            const computedKg = Math.round(computedYieldKgByCrop[crop] ?? 0);
+                            const overrideStr = cropYieldOverride[crop]?.trim();
+                            const effectiveKg = overrideStr ? (parseFloat(overrideStr) || 0) : computedKg;
+                            const price = getPriceForCrop(crop);
+                            const value = price != null && effectiveKg > 0 ? Math.round(effectiveKg * price) : null;
+                            return (
+                              <div key={crop} className="flex flex-wrap items-center gap-2">
+                                <span className="text-body-xs text-kh-text-muted flex items-center gap-1.5 shrink-0">
+                                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: meta.color }} />
+                                  {crop}
+                                </span>
+                                <label className="flex items-center gap-1.5 text-body-xs text-kh-text-dim shrink-0">
+                                  {t.farm.yieldKg}:
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step={100}
+                                    placeholder={String(computedKg)}
+                                    value={overrideStr}
+                                    onChange={(e) => setCropYieldOverride((prev) => ({ ...prev, [crop]: e.target.value }))}
+                                    className="w-20 px-2 py-1 bg-kh-surface border border-kh-border rounded text-kh-text text-body-xs [color-scheme:dark]"
+                                  />
+                                </label>
+                                {value != null ? (
+                                  <span className="text-body-sm font-semibold text-kh-accent ml-auto">₹{value.toLocaleString("en-IN")}</span>
+                                ) : (
+                                  <span className="text-body-xs text-kh-text-dim ml-auto">{t.farm.priceNotAvailable}</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {cropList.length > 1 && (() => {
+                            let totalVal = 0;
+                            for (const crop of cropList) {
+                              const overrideStr = cropYieldOverride[crop]?.trim();
+                              const effectiveKg = overrideStr ? parseFloat(overrideStr) : (computedYieldKgByCrop[crop] ?? 0);
+                              const price = getPriceForCrop(crop);
+                              if (price != null && effectiveKg > 0) totalVal += Math.round(effectiveKg * price);
+                            }
+                            return (
+                              <div className="flex items-center justify-between gap-2 pt-1.5 mt-1.5 border-t border-kh-border">
+                                <span className="text-body-xs font-medium text-kh-text">{t.farm.total}</span>
+                                <span className="text-body-sm font-semibold text-kh-accent">₹{totalVal.toLocaleString("en-IN")}</span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      ) : mandiPrices.length === 0 ? (
+                        <button type="button" onClick={fetchMandiPrices} disabled={mandiLoading}
+                          className="text-body-xs text-kh-accent hover:underline font-medium">
+                          {t.farm.loadPrices} → {t.farm.estValueByCrop}
+                        </button>
+                      ) : (
+                        <p className="text-body-xs text-kh-text-dim">{t.farm.priceNotAvailable}</p>
+                      )}
+                    </div>
+                  )}
                   {farm.zones.map((zone, i) => {
                     const meta = CROP_META[zone.crop] || { color: "#64748b" };
+                    const { progressPct, hasDates } = getZoneProgress(zone);
                     return (
                       <div key={zone.id} className="rounded-xl border border-kh-border bg-kh-surface/50 overflow-hidden animate-scale-in" style={{ animationDelay: `${i * 50}ms` }}>
                         <div className="h-1.5 w-full" style={{ backgroundColor: meta.color }} />
                         <div className="p-4 flex items-start justify-between gap-3">
-                          <div className="flex gap-3 min-w-0">
+                          <div className="flex gap-3 min-w-0 flex-1">
                             <div className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center" style={{ backgroundColor: meta.color + "20" }}>
                               <Leaf size={18} style={{ color: meta.color }} />
                             </div>
-                            <div className="min-w-0">
-                              <h3 className="text-body-md font-semibold text-kh-text truncate">{zone.name}</h3>
-                              <p className="text-body-sm text-kh-text-muted">{zone.crop}</p>
+                            <div className="min-w-0 flex-1">
+                              <input value={zone.name} onChange={(e) => updateZone(zone.id, { name: e.target.value })}
+                                className="text-body-md font-semibold text-kh-text bg-transparent border-b border-transparent hover:border-kh-border focus:border-kh-accent outline-none w-full mb-0.5" placeholder={t.farm.zoneName} />
+                              <select value={zone.crop} onChange={(e) => updateZone(zone.id, { crop: e.target.value })}
+                                className="text-body-sm text-kh-text-muted bg-kh-surface/80 border border-kh-border rounded-lg px-2 py-1 pr-6 [color-scheme:dark]">
+                                {crops.map((c) => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                              <div className="grid grid-cols-2 gap-2 mt-2">
+                                <div>
+                                  <label className="text-[10px] text-kh-text-dim block mb-0.5">{t.farm.area}</label>
+                                  <input type="text" inputMode="decimal" value={zone.area} onChange={(e) => updateZone(zone.id, { area: e.target.value })}
+                                    className="w-full px-2 py-1.5 bg-kh-surface border border-kh-border rounded-lg text-body-xs text-kh-text [color-scheme:dark]" />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-kh-text-dim block mb-0.5">{t.farm.unit}</label>
+                                  <select value={zone.unit} onChange={(e) => updateZone(zone.id, { unit: e.target.value as "acres" | "hectares" })}
+                                    className="w-full px-2 py-1.5 bg-kh-surface border border-kh-border rounded-lg text-body-xs text-kh-text [color-scheme:dark]">
+                                    <option value="acres">{t.farm.acres}</option>
+                                    <option value="hectares">{t.farm.hectares}</option>
+                                  </select>
+                                </div>
+                              </div>
+                              <div className="mt-2">
+                                <label className="text-[10px] text-kh-text-dim block mb-0.5">{t.farm.expectedYield} (optional)</label>
+                                <div className="flex gap-1.5">
+                                  <input type="text" inputMode="decimal" placeholder="—" value={zone.expectedYieldQty ?? zone.expectedYieldKg ?? ""} onChange={(e) => updateZone(zone.id, { expectedYieldQty: e.target.value, expectedYieldUnit: zone.expectedYieldUnit ?? (zone.expectedYieldKg ? "kg" : "plants") })}
+                                    className="flex-1 min-w-0 px-2 py-1.5 bg-kh-surface border border-kh-border rounded-lg text-body-xs text-kh-text [color-scheme:dark]" />
+                                  <select value={zone.expectedYieldUnit ?? (zone.expectedYieldKg ? "kg" : "plants")} onChange={(e) => updateZone(zone.id, { expectedYieldUnit: e.target.value as ExpectedYieldUnit })}
+                                    className="shrink-0 px-2 py-1.5 bg-kh-surface border border-kh-border rounded-lg text-body-xs text-kh-text [color-scheme:dark]">
+                                    <option value="kg">{t.farm.unitKg}</option>
+                                    <option value="quintals">{t.farm.unitQuintals}</option>
+                                    <option value="plants">{t.farm.unitPlants}</option>
+                                  </select>
+                                </div>
+                              </div>
+                              {(() => {
+                                const zoneValue = getEstimatedValue(zone);
+                                if (zoneValue != null) {
+                                  return (
+                                    <p className="text-body-xs text-kh-accent font-medium mt-2">
+                                      {t.farm.estHarvestValue}: ₹{zoneValue.toLocaleString("en-IN")} {t.farm.atCurrentPrice}
+                                    </p>
+                                  );
+                                }
+                                return null;
+                              })()}
                               <div className="flex gap-3 mt-1.5 text-body-xs text-kh-text-dim">
-                                {zone.area && <span className="flex items-center gap-1"><Ruler size={10} /> {zone.area} {zone.unit}</span>}
                                 {zone.plantingDate && <span className="flex items-center gap-1"><Calendar size={10} /> {new Date(zone.plantingDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>}
                               </div>
+                              {hasDates ? (
+                                <div className="mt-3">
+                                  <div className="flex justify-between text-body-xs text-kh-text-dim mb-1">
+                                    <span>{t.farm.seasonProgress}</span>
+                                    <span className="font-medium text-kh-text-muted">{progressPct}%</span>
+                                  </div>
+                                  <div className="h-2 rounded-full bg-kh-border overflow-hidden">
+                                    <div className="h-full rounded-full transition-all duration-300" style={{ width: `${progressPct}%`, backgroundColor: meta.color }} />
+                                  </div>
+                                  <div className="flex justify-between mt-0.5 text-[10px] text-kh-text-dim">
+                                    <span>{t.farm.planted}</span>
+                                    <span>{t.farm.harvest}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="mt-3">
+                                  <p className="text-body-xs text-kh-text-dim mb-2">{t.farm.setDates}</p>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-[10px] text-kh-text-dim block mb-0.5">{t.farm.plantingDate}</label>
+                                      <input type="date" value={zone.plantingDate || ""} onChange={(e) => updateZone(zone.id, { plantingDate: e.target.value })}
+                                        className="w-full px-2 py-1.5 bg-kh-surface border border-kh-border rounded-lg text-body-xs text-kh-text [color-scheme:dark]" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-kh-text-dim block mb-0.5">{t.farm.expectedHarvest}</label>
+                                      <input type="date" value={zone.expectedHarvest || ""} onChange={(e) => updateZone(zone.id, { expectedHarvest: e.target.value })}
+                                        className="w-full px-2 py-1.5 bg-kh-surface border border-kh-border rounded-lg text-body-xs text-kh-text [color-scheme:dark]" />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
