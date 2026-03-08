@@ -55,6 +55,19 @@ public/
 - **3G Optimized**: <94KB first-load JS per page
 - **i18n**: English, Hindi, Telugu (extensible to 8 languages)
 
+## Deploy (free)
+
+The app works on **Vercel**, **Netlify**, or any Node host. For **OTP login to work** on serverless (different instances per request), use **Upstash Redis** (free tier):
+
+1. Sign up at [upstash.com](https://upstash.com) and create a Redis database.
+2. Copy **REST URL** and **REST Token** from the database dashboard.
+3. In your deployment project (e.g. Vercel → Settings → Environment Variables), add:
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+4. Deploy. OTP is stored in Redis so send and verify work across instances.
+
+Without these env vars, the app falls back to in-memory OTP (fine for local dev; unreliable after deploy). Set your other env vars (AWS, OpenWeather, Groq, DATA_GOV_IN_API_KEY) in the same place for weather, mandi, and AI features.
+
 ## Scripts
 
 | Command | Description |

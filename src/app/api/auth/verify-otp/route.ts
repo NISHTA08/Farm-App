@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyOtp, generateAuthToken } from "@/lib/otp-store";
+import { verifyOtp } from "@/lib/otp-store-persistent";
+import { generateAuthToken } from "@/lib/otp-store";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = verifyOtp(phone, otp);
+    const result = await verifyOtp(phone, otp);
 
     if (!result.valid) {
       return NextResponse.json(

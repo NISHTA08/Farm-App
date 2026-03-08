@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
-import { generateOtp, storeOtp } from "@/lib/otp-store";
+import { generateOtp, storeOtp } from "@/lib/otp-store-persistent";
 
 const sns = new SNSClient({
   region: process.env.AWS_REGION || "us-east-1",
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     const otp = generateOtp();
-    storeOtp(phone, otp);
+    await storeOtp(phone, otp);
 
     let smsSent = false;
 
