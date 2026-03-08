@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import BottomNav from "@/components/BottomNav";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -10,12 +11,23 @@ import {
   Calendar,
   Ruler,
   Trash2,
-  X,
   Check,
-  Wheat,
   Leaf,
   AlertCircle,
+  MapPin,
+  Map,
+  RotateCcw,
 } from "lucide-react";
+import type { MapCenter, BoundaryPoint } from "@/components/FarmMapEditor";
+
+const FarmMapEditor = dynamic(() => import("@/components/FarmMapEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-xl border border-kh-border bg-kh-surface flex items-center justify-center text-kh-text-dim text-body-sm" style={{ height: "320px" }}>
+      Loading map…
+    </div>
+  ),
+});
 
 interface CropZone {
   id: string;
@@ -27,6 +39,7 @@ interface CropZone {
   expectedHarvest: string;
   health: "healthy" | "attention" | "critical";
   notes: string;
+  boundary?: BoundaryPoint[];
 }
 
 interface FarmProfile {
@@ -34,10 +47,22 @@ interface FarmProfile {
   unit: "acres" | "hectares";
   location: string;
   zones: CropZone[];
+  mapCenter: MapCenter;
+  boundary: BoundaryPoint[];
+  boundarySaved?: boolean;
 }
 
+const DEFAULT_MAP_CENTER: MapCenter = { lat: 20.5937, lng: 78.9629 };
+
 const FARM_KEY = "khethai-farm-data";
-const defaultFarm: FarmProfile = { totalArea: "", unit: "acres", location: "", zones: [] };
+const defaultFarm: FarmProfile = {
+  totalArea: "",
+  unit: "acres",
+  location: "",
+  zones: [],
+  mapCenter: DEFAULT_MAP_CENTER,
+  boundary: [],
+};
 
 const healthConfig = {
   healthy: { bg: "bg-emerald-500/10 border-emerald-500/20", text: "text-emerald-400", label: "Healthy", dot: "bg-emerald-400" },
@@ -47,14 +72,55 @@ const healthConfig = {
 
 const crops = ["Rice", "Wheat", "Cotton", "Sugarcane", "Maize", "Tomato", "Potato", "Onion", "Soybean", "Groundnut"];
 
+/** Township-style: crop label + color for plot cards and selector */
+const CROP_META: Record<string, { color: string; short?: string }> = {
+  Rice: { color: "#84cc16", short: "Rice" },
+  Wheat: { color: "#eab308", short: "Wheat" },
+  Cotton: { color: "#a78bfa", short: "Cotton" },
+  Sugarcane: { color: "#f97316", short: "Sugarcane" },
+  Maize: { color: "#facc15", short: "Maize" },
+  Tomato: { color: "#ef4444", short: "Tomato" },
+  Potato: { color: "#78716c", short: "Potato" },
+  Onion: { color: "#fbbf24", short: "Onion" },
+  Soybean: { color: "#22c55e", short: "Soybean" },
+  Groundnut: { color: "#d97706", short: "Groundnut" },
+};
+
 export default function FarmPage() {
   const [farm, setFarm] = useState<FarmProfile>(defaultFarm);
   const [showAdd, setShowAdd] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [newZone, setNewZone] = useState({ name: "", crop: "", area: "", unit: "acres" as const, plantingDate: "", expectedHarvest: "", health: "healthy" as const, notes: "" });
+  const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [newZone, setNewZone] = useState({
+    name: "",
+    crop: "",
+    area: "",
+    unit: "acres" as const,
+    plantingDate: "",
+    expectedHarvest: "",
+    health: "healthy" as const,
+    notes: "",
+    boundary: [] as BoundaryPoint[],
+  });
 
   useEffect(() => {
-    try { const s = localStorage.getItem(FARM_KEY); if (s) setFarm(JSON.parse(s)); } catch {}
+    try {
+      const s = localStorage.getItem(FARM_KEY);
+      if (s) {
+        const parsed = JSON.parse(s);
+        setFarm({
+          ...defaultFarm,
+          ...parsed,
+          mapCenter: parsed.mapCenter || defaultFarm.mapCenter,
+          boundary: Array.isArray(parsed.boundary) ? parsed.boundary : [],
+          boundarySaved: !!parsed.boundarySaved,
+          zones: (parsed.zones || []).map((z: CropZone) => ({
+            ...z,
+            boundary: Array.isArray(z.boundary) ? z.boundary : [],
+          })),
+        });
+      }
+    } catch {}
     setMounted(true);
   }, []);
 
@@ -64,10 +130,23 @@ export default function FarmPage() {
   }, []);
 
   const addZone = () => {
-    if (!newZone.name || !newZone.crop) return;
-    save({ ...farm, zones: [...farm.zones, { ...newZone, id: `z-${Date.now()}` }] });
-    setNewZone({ name: "", crop: "", area: "", unit: "acres", plantingDate: "", expectedHarvest: "", health: "healthy", notes: "" });
-    setShowAdd(false);
+    if (!newZone.name || !newZone.crop || newZone.boundary.length < 3) return;
+    const { boundary, ...rest } = newZone;
+    save({
+      ...farm,
+      zones: [...farm.zones, { ...rest, id: `z-${Date.now()}`, boundary }],
+    });
+    setNewZone({
+      name: "",
+      crop: "",
+      area: "",
+      unit: "acres",
+      plantingDate: "",
+      expectedHarvest: "",
+      health: "healthy",
+      notes: "",
+      boundary: [],
+    });
   };
 
   const deleteZone = (id: string) => save({ ...farm, zones: farm.zones.filter((z) => z.id !== id) });
@@ -89,127 +168,251 @@ export default function FarmPage() {
       </header>
 
       <div className="relative z-10 max-w-lg mx-auto px-6 mt-4 space-y-3">
-        {/* Farm details */}
+        {/* Step 1: Draw & save farm boundary */}
         <div className="glow-card glow-violet bg-kh-card p-5">
-          <h2 className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-4">Farm Overview</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-body-xs text-kh-text-dim mb-1.5 block">Total Area</label>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-body-xs text-kh-text-dim uppercase tracking-wider flex items-center gap-2">
+              <Map size={14} />
+              {farm.boundarySaved ? "Your farm" : "1. Draw farm boundary"}
+            </h2>
+            {farm.boundarySaved && (
+              <span className="px-2.5 py-1 rounded-full text-body-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                <Check size={12} /> Saved
+              </span>
+            )}
+          </div>
+          {!farm.boundarySaved ? (
+            <>
+              <p className="text-body-xs text-kh-text-dim mb-3">
+                Use &quot;Use my location&quot;, then tap the map to add points. Drag to move; tap a point to remove. Need at least 3 points, then <strong className="text-kh-text">Save boundary</strong>.
+              </p>
+              <FarmMapEditor
+                center={farm.mapCenter}
+                boundary={farm.boundary}
+                onCenterChange={(c) => save({ ...farm, mapCenter: c })}
+                onBoundaryChange={(b) => save({ ...farm, boundary: b })}
+                onRemovePoint={(index) => save({ ...farm, boundary: farm.boundary.filter((_, i) => i !== index) })}
+                zoneBoundaries={[]}
+                height="280px"
+                isDrawing={true}
+                boundaryLocked={false}
+              />
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Button size="sm" variant="secondary" onClick={() => {
+                  if (!navigator.geolocation) { setLocationStatus("error"); return; }
+                  setLocationStatus("loading");
+                  navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                      save({ ...farm, mapCenter: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
+                      setLocationStatus("success");
+                      setTimeout(() => setLocationStatus("idle"), 3000);
+                    },
+                    () => { setLocationStatus("error"); setTimeout(() => setLocationStatus("idle"), 4000); },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                  );
+                }} icon={<MapPin size={14} />}>
+                  {locationStatus === "loading" ? "Finding…" : "Use my location"}
+                </Button>
+                {farm.boundary.length > 0 && (
+                  <>
+                    <Button size="sm" variant="ghost" onClick={() => save({ ...farm, boundary: farm.boundary.slice(0, -1) })} icon={<RotateCcw size={14} />}>Undo</Button>
+                    <Button size="sm" variant="ghost" onClick={() => save({ ...farm, boundary: [] })} icon={<Trash2 size={14} />}>Clear</Button>
+                  </>
+                )}
+                {farm.boundary.length >= 3 && (
+                  <Button size="sm" variant="primary" onClick={() => save({ ...farm, boundarySaved: true })} icon={<Check size={14} />}>
+                    Save boundary
+                  </Button>
+                )}
+              </div>
+              {locationStatus === "success" && <p className="text-body-xs text-emerald-400 mt-2">Location updated.</p>}
+              {locationStatus === "error" && <p className="text-body-xs text-amber-400 mt-2">Allow location access and try again.</p>}
+              {farm.boundary.length > 0 && farm.boundary.length < 3 && (
+                <p className="text-body-xs text-kh-text-dim mt-2">Add {3 - farm.boundary.length} more point{farm.boundary.length === 2 ? "" : "s"} to save.</p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-body-xs text-kh-text-dim mb-3">Your saved farm on the map. Edit boundary below to change it.</p>
+              <FarmMapEditor
+                center={farm.mapCenter}
+                boundary={farm.boundary}
+                onCenterChange={(c) => save({ ...farm, mapCenter: c })}
+                onBoundaryChange={() => {}}
+                zoneBoundaries={[]}
+                height="280px"
+                isDrawing={false}
+                boundaryLocked={true}
+                fitBoundsToBoundary={true}
+                planViewOnly={false}
+              />
+              <Button size="sm" variant="ghost" className="mt-3" onClick={() => save({ ...farm, boundarySaved: false })} icon={<RotateCcw size={14} />}>
+                Edit boundary
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* Step 2: Plan crops — fixed outline on black, place dots on outline */}
+        <div className="glow-card bg-kh-card p-5">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-body-xs text-kh-text-dim uppercase tracking-wider">2. Plan your crops</h2>
+            {farm.boundarySaved && (
               <div className="flex gap-2">
-                <input type="number" placeholder="0" value={farm.totalArea}
-                  onChange={(e) => save({ ...farm, totalArea: e.target.value })}
-                  className="flex-1 px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text focus:outline-none focus:border-violet-500/50 transition-all min-h-[44px]" />
-                <select value={farm.unit} onChange={(e) => save({ ...farm, unit: e.target.value as "acres" | "hectares" })}
-                  className="px-2 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text focus:outline-none focus:border-violet-500/50 transition-all min-h-[44px]">
-                  <option value="acres">Acres</option>
-                  <option value="hectares">Ha</option>
-                </select>
+                {showAdd ? (
+                  <Button size="sm" variant="secondary" onClick={() => setShowAdd(false)}>Done</Button>
+                ) : (
+                  <Button size="sm" variant="primary" onClick={() => setShowAdd(true)} icon={<Plus size={14} />}>Add crop area</Button>
+                )}
               </div>
-            </div>
-            <div>
-              <label className="text-body-xs text-kh-text-dim mb-1.5 block">Location</label>
-              <input type="text" placeholder="Village/District" value={farm.location}
-                onChange={(e) => save({ ...farm, location: e.target.value })}
-                className="w-full px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text placeholder-kh-text-dim focus:outline-none focus:border-violet-500/50 transition-all min-h-[44px]" />
-            </div>
+            )}
           </div>
-        </div>
-
-        {/* Zone header */}
-        <div className="flex items-center justify-between pt-2">
-          <h2 className="text-body-md font-semibold text-kh-text">Crop Zones ({farm.zones.length})</h2>
-          <Button size="sm" variant={showAdd ? "ghost" : "primary"} onClick={() => setShowAdd(!showAdd)}
-            icon={showAdd ? <X size={14} /> : <Plus size={14} />}>
-            {showAdd ? "Cancel" : "Add"}
-          </Button>
-        </div>
-
-        {/* Add zone form */}
-        {showAdd && (
-          <div className="glow-card bg-kh-card p-5 space-y-4 animate-slide-up" style={{ boxShadow: "0 0 60px -15px rgba(139,92,246,0.15)" }}>
-            <Input label="Zone Name" placeholder="e.g., North Field" value={newZone.name} onChange={(e) => setNewZone({ ...newZone, name: e.target.value })} />
-            <div>
-              <label className="text-body-xs text-kh-text-dim mb-2 block">Select Crop</label>
-              <div className="flex flex-wrap gap-1.5">
-                {crops.map((c) => (
-                  <button key={c} onClick={() => setNewZone({ ...newZone, crop: c })}
-                    className={`px-3 py-1.5 rounded-full text-body-xs font-medium transition-all
-                      ${newZone.crop === c ? "gradient-accent text-black" : "bg-white/[0.04] text-kh-text-dim hover:text-kh-text-muted"}`}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+          {!farm.boundarySaved ? (
+            <p className="text-body-sm text-kh-text-dim py-4 text-center">Save your farm boundary above first, then you can add crop areas here.</p>
+          ) : showAdd ? (
+            /* Add flow: draw area on map → choose crop (color) → save. Then add another or Done. */
+            <div className="space-y-5 animate-slide-up">
+              <p className="text-body-xs text-kh-text-dim">Draw an area (boundary) for this crop, choose the crop type (each has a different color), then save. You can add multiple areas — one per crop or several for the same crop.</p>
               <div>
-                <label className="text-body-xs text-kh-text-dim mb-1.5 block">Area</label>
-                <input type="number" placeholder="0" value={newZone.area}
-                  onChange={(e) => setNewZone({ ...newZone, area: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text focus:outline-none focus:border-kh-accent/50 transition-all min-h-[44px]" />
-              </div>
-              <div>
-                <label className="text-body-xs text-kh-text-dim mb-1.5 block">Planted</label>
-                <input type="date" value={newZone.plantingDate}
-                  onChange={(e) => setNewZone({ ...newZone, plantingDate: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text focus:outline-none focus:border-kh-accent/50 transition-all min-h-[44px] [color-scheme:dark]" />
-              </div>
-            </div>
-            <Button fullWidth onClick={addZone} icon={<Check size={14} />}>Add Zone</Button>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {farm.zones.length === 0 && !showAdd && (
-          <div className="glow-card bg-kh-card p-10 text-center">
-            <Wheat size={36} className="text-kh-text-dim mx-auto mb-4 animate-float" />
-            <h3 className="font-display text-display-sm text-kh-text mb-2">No Zones Yet</h3>
-            <p className="text-body-sm text-kh-text-dim mb-6 max-w-[220px] mx-auto">
-              Add your first crop zone to start tracking
-            </p>
-            <Button onClick={() => setShowAdd(true)} icon={<Plus size={14} />}>Add First Zone</Button>
-          </div>
-        )}
-
-        {/* Zone list */}
-        {farm.zones.map((zone, i) => {
-          const hc = healthConfig[zone.health];
-          return (
-            <div key={zone.id} className="glow-card bg-kh-card p-5 animate-scale-in" style={{ animationDelay: `${i * 60}ms` }}>
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <h3 className="text-body-md font-semibold text-kh-text">{zone.name}</h3>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <Leaf size={12} className="text-kh-accent" />
-                    <span className="text-body-sm text-kh-text-muted">{zone.crop}</span>
+                <h3 className="text-body-sm font-semibold text-kh-text mb-1">1. Draw the area on the map</h3>
+                <p className="text-body-xs text-kh-text-dim mb-2">Tap on the map inside the green farm boundary to add points (at least 3). The dashed shape is the area you’re adding.</p>
+                <FarmMapEditor
+                  center={farm.mapCenter}
+                  boundary={farm.boundary}
+                  onCenterChange={(c) => save({ ...farm, mapCenter: c })}
+                  onBoundaryChange={() => {}}
+                  activeZoneBoundary={newZone.boundary}
+                  onActiveZoneBoundaryChange={(b) => setNewZone((prev) => ({ ...prev, boundary: b }))}
+                  zoneBoundaries={farm.zones.filter((z) => z.boundary && z.boundary.length >= 3).map((z) => ({ id: z.id, name: z.name, crop: z.crop, boundary: z.boundary!, health: z.health }))}
+                  height="220px"
+                  isDrawing={false}
+                  isDrawingZone={true}
+                  boundaryLocked={true}
+                  fitBoundsToBoundary={true}
+                  planViewOnly={true}
+                />
+                {newZone.boundary.length > 0 && (
+                  <div className="flex gap-2 mt-2 flex-wrap items-center">
+                    <button type="button" onClick={() => setNewZone((prev) => ({ ...prev, boundary: prev.boundary.slice(0, -1) }))} className="text-body-xs text-kh-text-dim hover:text-kh-text">Undo</button>
+                    <button type="button" onClick={() => setNewZone((prev) => ({ ...prev, boundary: [] }))} className="text-body-xs text-amber-400 hover:underline">Clear</button>
+                    <span className="text-body-xs text-kh-text-dim">{newZone.boundary.length} points</span>
                   </div>
+                )}
+              </div>
+              <div>
+                <h3 className="text-body-sm font-semibold text-kh-text mb-2">2. Choose crop (color identifies it on the map)</h3>
+                <Input label="Area name" placeholder="e.g. North field" value={newZone.name} onChange={(e) => setNewZone((prev) => ({ ...prev, name: e.target.value }))} />
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+                  {crops.map((c) => {
+                    const meta = CROP_META[c] || { color: "#64748b" };
+                    const selected = newZone.crop === c;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setNewZone((prev) => ({ ...prev, crop: c }))}
+                        className={`rounded-xl p-3 text-left border-2 transition-all flex items-center gap-2
+                          ${selected ? "border-kh-accent bg-emerald-500/15 shadow-lg shadow-emerald-500/10" : "border-kh-border bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"}`}
+                      >
+                        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: meta.color }} />
+                        <span className={`text-body-sm font-medium truncate ${selected ? "text-kh-text" : "text-kh-text-muted"}`}>{c}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-body-xs font-medium border ${hc.bg} ${hc.text}`}>
-                  {hc.label}
-                </span>
               </div>
-
-              <div className="flex gap-4 text-body-xs text-kh-text-dim mb-3">
-                {zone.area && <span className="flex items-center gap-1"><Ruler size={11} /> {zone.area} {zone.unit}</span>}
-                {zone.plantingDate && <span className="flex items-center gap-1"><Calendar size={11} /> {new Date(zone.plantingDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>}
-              </div>
-
-              <div className="flex items-center justify-between pt-3 border-t border-kh-border">
-                <div className="flex gap-2">
-                  {(["healthy", "attention", "critical"] as const).map((h) => (
-                    <button key={h} onClick={() => updateHealth(zone.id, h)}
-                      className={`w-3.5 h-3.5 rounded-full transition-all ${healthConfig[h].dot}
-                        ${zone.health === h ? "scale-110 ring-2 ring-offset-1 ring-offset-kh-card ring-current" : "opacity-30 hover:opacity-60"}`}
-                      title={healthConfig[h].label} />
-                  ))}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-body-xs text-kh-text-dim mb-1 block">Area (optional)</label>
+                  <input type="number" placeholder="0" value={newZone.area} onChange={(e) => setNewZone((prev) => ({ ...prev, area: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text min-h-[44px]" />
                 </div>
-                <button onClick={() => deleteZone(zone.id)}
-                  className="p-2 rounded-lg text-kh-text-dim hover:text-red-400 hover:bg-red-500/10 transition-all">
-                  <Trash2 size={13} />
-                </button>
+                <div>
+                  <label className="text-body-xs text-kh-text-dim mb-1 block">Planted (optional)</label>
+                  <input type="date" value={newZone.plantingDate} onChange={(e) => setNewZone((prev) => ({ ...prev, plantingDate: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text min-h-[44px] [color-scheme:dark]" />
+                </div>
               </div>
+              <Button fullWidth onClick={addZone} icon={<Check size={14} />} disabled={!newZone.name || !newZone.crop || newZone.boundary.length < 3}>
+                Save this crop area
+              </Button>
             </div>
-          );
-        })}
+          ) : (
+            <>
+              {/* Fixed outline on black (second view) — always show when boundary saved */}
+              <div className="mb-4">
+                <FarmMapEditor
+                  center={farm.mapCenter}
+                  boundary={farm.boundary}
+                  onCenterChange={(c) => save({ ...farm, mapCenter: c })}
+                  onBoundaryChange={() => {}}
+                  zoneBoundaries={farm.zones.filter((z) => z.boundary && z.boundary.length >= 3).map((z) => ({ id: z.id, name: z.name, crop: z.crop, boundary: z.boundary!, health: z.health }))}
+                  height="220px"
+                  isDrawing={false}
+                  boundaryLocked={true}
+                  fitBoundsToBoundary={true}
+                  planViewOnly={true}
+                />
+              </div>
+              {farm.zones.length === 0 ? (
+                <div className="py-6 text-center">
+                  <h3 className="font-display text-display-sm text-kh-text mb-2">Add crop areas</h3>
+                  <p className="text-body-sm text-kh-text-dim mb-6 max-w-[260px] mx-auto">Draw an area for each crop. Each crop has a different color so you can see Rice, Wheat, etc. on the map.</p>
+                  <Button onClick={() => setShowAdd(true)} icon={<Plus size={14} />}>Add crop area</Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {farm.zones.length > 0 && (
+                    <div className="flex flex-wrap gap-x-3 gap-y-1.5 py-2 px-3 rounded-lg bg-kh-surface/60 border border-kh-border">
+                      <span className="text-body-xs text-kh-text-dim w-full sm:w-auto">Crop colors:</span>
+                      {Array.from(new Set(farm.zones.map((z) => z.crop))).map((crop) => {
+                        const meta = CROP_META[crop] || { color: "#64748b" };
+                        return (
+                          <span key={crop} className="text-body-xs text-kh-text-muted flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: meta.color }} />
+                            {crop}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {farm.zones.map((zone, i) => {
+                    const meta = CROP_META[zone.crop] || { color: "#64748b" };
+                    return (
+                      <div key={zone.id} className="rounded-xl border border-kh-border bg-kh-surface/50 overflow-hidden animate-scale-in" style={{ animationDelay: `${i * 50}ms` }}>
+                        <div className="h-1.5 w-full" style={{ backgroundColor: meta.color }} />
+                        <div className="p-4 flex items-start justify-between gap-3">
+                          <div className="flex gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center" style={{ backgroundColor: meta.color + "20" }}>
+                              <Leaf size={18} style={{ color: meta.color }} />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-body-md font-semibold text-kh-text truncate">{zone.name}</h3>
+                              <p className="text-body-sm text-kh-text-muted">{zone.crop}</p>
+                              <div className="flex gap-3 mt-1.5 text-body-xs text-kh-text-dim">
+                                {zone.area && <span className="flex items-center gap-1"><Ruler size={10} /> {zone.area} {zone.unit}</span>}
+                                {zone.plantingDate && <span className="flex items-center gap-1"><Calendar size={10} /> {new Date(zone.plantingDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {(["healthy", "attention", "critical"] as const).map((h) => (
+                              <button key={h} onClick={() => updateHealth(zone.id, h)}
+                                className={`w-3 h-3 rounded-full transition-all ${healthConfig[h].dot} ${zone.health === h ? "scale-110 ring-2 ring-offset-1 ring-offset-kh-card" : "opacity-30 hover:opacity-60"}`} title={healthConfig[h].label} />
+                            ))}
+                            <button onClick={() => deleteZone(zone.id)} className="p-2 rounded-lg text-kh-text-dim hover:text-red-400 hover:bg-red-500/10">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         {farm.zones.length > 0 && (
           <div className="glow-card bg-kh-card p-4">

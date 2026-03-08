@@ -71,8 +71,6 @@ async function chatWithGroq(
 }
 
 export async function POST(request: NextRequest) {
-  let lastUserMsg = "";
-
   try {
     const body = await request.json();
     const { messages: chatHistory, provider = "aws" } = body;
@@ -80,8 +78,6 @@ export async function POST(request: NextRequest) {
     if (!chatHistory || !Array.isArray(chatHistory) || chatHistory.length === 0) {
       return NextResponse.json({ error: "No messages provided" }, { status: 400 });
     }
-
-    lastUserMsg = chatHistory[chatHistory.length - 1]?.text || "";
 
     const filtered: { role: string; text: string }[] = [];
     for (const msg of chatHistory) {

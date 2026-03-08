@@ -137,7 +137,7 @@ export default function CropDoctorPage() {
             <h1 className="font-display text-display-sm text-kh-text">AI Crop Doctor</h1>
             <p className="text-body-xs text-kh-text-dim flex items-center gap-1">
               <Sparkles size={10} className="text-kh-accent" />
-              Powered by Amazon Nova AI
+              Powered by Groq AI
             </p>
           </div>
         </div>
