@@ -191,18 +191,30 @@ export default function FarmPage() {
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [mandiPrices, setMandiPrices] = useState<MandiPriceRow[]>([]);
   const [mandiLoading, setMandiLoading] = useState(false);
-  const [newZone, setNewZone] = useState({
+  const [newZone, setNewZone] = useState<{
+    name: string;
+    crop: string;
+    area: string;
+    unit: "acres" | "hectares";
+    expectedYieldQty: string;
+    expectedYieldUnit: ExpectedYieldUnit;
+    plantingDate: string;
+    expectedHarvest: string;
+    health: "healthy";
+    notes: string;
+    boundary: BoundaryPoint[];
+  }>({
     name: "",
     crop: "",
     area: "",
-    unit: "acres" as const,
+    unit: "acres",
     expectedYieldQty: "",
-    expectedYieldUnit: "plants" as ExpectedYieldUnit,
+    expectedYieldUnit: "plants",
     plantingDate: "",
     expectedHarvest: "",
-    health: "healthy" as const,
+    health: "healthy",
     notes: "",
-    boundary: [] as BoundaryPoint[],
+    boundary: [],
   });
   const [cropYieldOverride, setCropYieldOverride] = useState<Record<string, string>>({});
 
