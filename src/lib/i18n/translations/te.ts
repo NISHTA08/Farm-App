@@ -1,0 +1,68 @@
+import type { TranslationKeys } from "./en";
+
+const te: TranslationKeys = {
+
+  common: {
+    appName: "KhethAi",
+    tagline: "స్మార్ట్ వ్యవసాయం, మెరుగైన పంట",
+    loading: "లోడ్ అవుతోంది...",
+    error: "ఏదో తప్పు జరిగింది",
+    retry: "మళ్ళీ ప్రయత్నించండి",
+    cancel: "రద్దు చేయండి",
+    confirm: "నిర్ధారించండి",
+    back: "వెనుకకు",
+    next: "తదుపరి",
+    save: "సేవ్ చేయండి",
+    offline: "మీరు ఆఫ్‌లైన్‌లో ఉన్నారు",
+    online: "తిరిగి ఆన్‌లైన్‌లో",
+  },
+  auth: {
+    welcome: "KhethAi కి స్వాగతం",
+    subtitle: "ప్రారంభించడానికి మీ ఫోన్ నంబర్ నమోదు చేయండి",
+    phonePlaceholder: "10 అంకెల ఫోన్ నంబర్ నమోదు చేయండి",
+    phoneLabel: "ఫోన్ నంబర్",
+    sendOtp: "OTP పంపండి",
+    otpTitle: "OTP ధృవీకరించండి",
+    otpSubtitle: "దీనికి పంపిన 6 అంకెల కోడ్ నమోదు చేయండి",
+    otpPlaceholder: "OTP నమోదు చేయండి",
+    verifyOtp: "ధృవీకరించి కొనసాగించండి",
+    resendOtp: "OTP మళ్ళీ పంపండి",
+    resendIn: "మళ్ళీ పంపండి",
+    seconds: "సెకన్లలో",
+    invalidPhone: "దయచేసి చెల్లుబాటు అయ్యే 10 అంకెల ఫోన్ నంబర్ నమోదు చేయండి",
+    invalidOtp: "దయచేసి చెల్లుబాటు అయ్యే 6 అంకెల OTP నమోదు చేయండి",
+    otpSent: "OTP విజయవంతంగా పంపబడింది!",
+    otpFailed: "OTP పంపడం విఫలమైంది. దయచేసి మళ్ళీ ప్రయత్నించండి.",
+    verifyFailed: "చెల్లని OTP. దయచేసి మళ్ళీ ప్రయత్నించండి.",
+  },
+  dashboard: {
+    greeting: "నమస్కారం",
+    title: "మీరు ఏమి చేయాలనుకుంటున్నారు?",
+    cropDoctor: "AI పంట డాక్టర్",
+    cropDoctorDesc: "మీ పంట వ్యాధులను స్కాన్ చేయండి",
+    weather: "వాతావరణం",
+    weatherDesc: "మీ ప్రాంతానికి 7 రోజుల అంచనా",
+    mandiPrices: "మండీ ధరలు",
+    mandiPricesDesc: "ఈరోజు మార్కెట్ ధరలు",
+    myFarm: "నా పొలం",
+    myFarmDesc: "మీ పొలాన్ని నిర్వహించండి",
+  },
+  language: {
+    title: "భాషను ఎంచుకోండి",
+    english: "English",
+    hindi: "हिन्दी",
+    telugu: "తెలుగు",
+    tamil: "தமிழ்",
+    kannada: "ಕನ್ನಡ",
+    marathi: "मराठी",
+    bengali: "বাংলা",
+    gujarati: "ગુજરાતી",
+  },
+  offline: {
+    title: "ఇంటర్నెట్ కనెక్షన్ లేదు",
+    message: "చింతించకండి! మీరు KhethAi ను ఆఫ్‌లైన్‌లో కూడా ఉపయోగించవచ్చు. మీరు ఆన్‌లైన్‌లో ఉన్నప్పుడు మీ డేటా సింక్ అవుతుంది.",
+    viewCached: "సేవ్ చేసిన డేటా చూడండి",
+  },
+};
+
+export default te;

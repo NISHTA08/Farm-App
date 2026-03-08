@@ -1,0 +1,68 @@
+import type { TranslationKeys } from "./en";
+
+const hi: TranslationKeys = {
+
+  common: {
+    appName: "KhethAi",
+    tagline: "स्मार्ट खेती, बेहतर फसल",
+    loading: "लोड हो रहा है...",
+    error: "कुछ गलत हो गया",
+    retry: "फिर से कोशिश करें",
+    cancel: "रद्द करें",
+    confirm: "पुष्टि करें",
+    back: "वापस",
+    next: "आगे",
+    save: "सहेजें",
+    offline: "आप ऑफ़लाइन हैं",
+    online: "वापस ऑनलाइन",
+  },
+  auth: {
+    welcome: "KhethAi में आपका स्वागत है",
+    subtitle: "शुरू करने के लिए अपना फ़ोन नंबर दर्ज करें",
+    phonePlaceholder: "10 अंकों का फ़ोन नंबर दर्ज करें",
+    phoneLabel: "फ़ोन नंबर",
+    sendOtp: "OTP भेजें",
+    otpTitle: "OTP सत्यापित करें",
+    otpSubtitle: "इस नंबर पर भेजा गया 6 अंकों का कोड दर्ज करें",
+    otpPlaceholder: "OTP दर्ज करें",
+    verifyOtp: "सत्यापित करें और जारी रखें",
+    resendOtp: "OTP फिर से भेजें",
+    resendIn: "फिर से भेजें",
+    seconds: "सेकंड में",
+    invalidPhone: "कृपया एक वैध 10 अंकों का फ़ोन नंबर दर्ज करें",
+    invalidOtp: "कृपया एक वैध 6 अंकों का OTP दर्ज करें",
+    otpSent: "OTP सफलतापूर्वक भेजा गया!",
+    otpFailed: "OTP भेजने में विफल। कृपया पुनः प्रयास करें।",
+    verifyFailed: "अमान्य OTP। कृपया पुनः प्रयास करें।",
+  },
+  dashboard: {
+    greeting: "नमस्ते",
+    title: "आप क्या करना चाहेंगे?",
+    cropDoctor: "AI फसल डॉक्टर",
+    cropDoctorDesc: "फसल की बीमारी जांचें",
+    weather: "मौसम",
+    weatherDesc: "आपके क्षेत्र का 7 दिन का पूर्वानुमान",
+    mandiPrices: "मंडी भाव",
+    mandiPricesDesc: "आज के बाज़ार भाव",
+    myFarm: "मेरा खेत",
+    myFarmDesc: "अपना खेत प्रबंधित करें",
+  },
+  language: {
+    title: "भाषा चुनें",
+    english: "English",
+    hindi: "हिन्दी",
+    telugu: "తెలుగు",
+    tamil: "தமிழ்",
+    kannada: "ಕನ್ನಡ",
+    marathi: "मराठी",
+    bengali: "বাংলা",
+    gujarati: "ગુજરાતી",
+  },
+  offline: {
+    title: "इंटरनेट कनेक्शन नहीं है",
+    message: "चिंता न करें! आप KhethAi को ऑफ़लाइन भी इस्तेमाल कर सकते हैं। ऑनलाइन होने पर आपका डेटा सिंक हो जाएगा।",
+    viewCached: "सहेजा गया डेटा देखें",
+  },
+};
+
+export default hi;

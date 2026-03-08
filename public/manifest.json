@@ -1,0 +1,20 @@
+{
+  "name": "KhethAi - Smart Farming",
+  "short_name": "KhethAi",
+  "description": "AI-powered crop disease diagnosis and farm management for Indian farmers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["agriculture", "tools", "education"]
+}
