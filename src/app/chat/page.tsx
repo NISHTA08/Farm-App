@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import BottomNav from "@/components/BottomNav";
 import VoiceInput from "@/components/VoiceInput";
+import { useI18n } from "@/lib/i18n/context";
 import { MessageSquare, Send, Sparkles, User, Loader2, Cloud, Zap, PlusSquare, History, X, Languages } from "lucide-react";
 
 const CHAT_PROVIDER_KEY = "khethai-chat-provider";
@@ -88,19 +89,15 @@ function threadTitle(messages: ChatMessage[]): string {
   return "Chat";
 }
 
-const suggestions = [
-  "My tomato leaves have brown spots. What disease is this?",
-  "When should I sow wheat in Madhya Pradesh?",
-  "Tell me about PM-KISAN scheme eligibility",
-  "How to increase rice yield naturally?",
-  "What is the best organic fertilizer for vegetables?",
-  "Current market price trends for soybean",
-];
+function getSuggestions(t: ReturnType<typeof useI18n>["t"]) {
+  return [t.chat.suggestion1, t.chat.suggestion2, t.chat.suggestion3, t.chat.suggestion4, t.chat.suggestion5, t.chat.suggestion6];
+}
 
 const emptyHistory: Record<ChatProvider, ChatMessage[]> = { groq: [], aws: [] };
 const emptySaved: Record<ChatProvider, SavedThread[]> = { groq: [], aws: [] };
 
 export default function ChatPage() {
+  const { t } = useI18n();
   const [messagesByProvider, setMessagesByProvider] = useState<Record<ChatProvider, ChatMessage[]>>(emptyHistory);
   const [savedThreadsByProvider, setSavedThreadsByProvider] = useState<Record<ChatProvider, SavedThread[]>>(emptySaved);
   const [input, setInput] = useState("");
@@ -400,7 +397,7 @@ export default function ChatPage() {
                   How can I help?
                 </h2>
                 <p className="text-body-sm text-kh-text-dim max-w-[280px] mx-auto">
-                  Ask about crop diseases, treatments, weather, schemes, or market advice
+                  {t.chat.placeholder}
                 </p>
               </div>
 
@@ -408,7 +405,7 @@ export default function ChatPage() {
                 Suggested Questions
               </p>
               <div className="space-y-2">
-                {suggestions.map((s, i) => (
+                {getSuggestions(t).map((s, i) => (
                   <button
                     key={i}
                     onClick={() => sendMessage(s)}
@@ -491,7 +488,7 @@ export default function ChatPage() {
                 onClick={() => setVoiceLangOpen((o) => !o)}
                 className="p-1.5 rounded-lg text-kh-text-dim hover:text-kh-text hover:bg-white/5 transition-colors"
                 title={`Voice: ${voiceLangLabel}. Tap to change.`}
-                aria-label="Voice language"
+                aria-label={t.chat.voiceLanguage}
               >
                 <Languages size={16} />
               </button>
@@ -500,7 +497,7 @@ export default function ChatPage() {
               <>
                 <div className="fixed inset-0 z-40" aria-hidden onClick={() => setVoiceLangOpen(false)} />
                 <div className="absolute bottom-full left-0 mb-1 py-2 rounded-xl bg-kh-card border border-kh-border shadow-xl z-50 max-h-52 overflow-y-auto min-w-[160px]">
-                  <p className="px-3 py-1.5 text-body-xs text-kh-text-dim uppercase tracking-wider">Voice language</p>
+                  <p className="px-3 py-1.5 text-body-xs text-kh-text-dim uppercase tracking-wider">{t.chat.voiceLanguage}</p>
                   {VOICE_LANGUAGES.map((opt) => (
                     <button
                       key={opt.value || "any"}
@@ -518,7 +515,7 @@ export default function ChatPage() {
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Ask about crops, diseases, schemes..."
+                placeholder={t.chat.placeholder}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}

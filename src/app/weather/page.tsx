@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import BottomNav from "@/components/BottomNav";
+import { useI18n } from "@/lib/i18n/context";
 import {
   CloudSun,
   Droplets,
@@ -65,6 +66,7 @@ function WeatherIcon({ icon, size = 24 }: { icon: string; size?: number }) {
 }
 
 export default function WeatherPage() {
+  const { t } = useI18n();
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -78,13 +80,13 @@ export default function WeatherPage() {
       const res = await fetch(`/api/weather?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error || "Could not load weather");
+        setError(data?.error || t.weather.loadError);
         return;
       }
       setWeather(data);
-    } catch { setError("Could not load weather data"); }
+    } catch { setError(t.weather.loadError); }
     finally { setLoading(false); }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -106,7 +108,7 @@ export default function WeatherPage() {
               <CloudSun size={20} className="text-blue-400" />
             </div>
             <div>
-              <h1 className="font-display text-display-sm text-kh-text">Weather</h1>
+              <h1 className="font-display text-display-sm text-kh-text">{t.weather.title}</h1>
               {weather && (
                 <div className="flex items-center gap-1 text-body-xs text-kh-text-dim">
                   <MapPin size={10} /> {weather.current.location}
@@ -132,7 +134,7 @@ export default function WeatherPage() {
           <div className="glow-card bg-kh-card p-10 text-center">
             <CloudSun size={36} className="text-kh-text-dim mx-auto mb-3" />
             <p className="text-body-md text-kh-text-muted mb-4">{error}</p>
-            <button onClick={() => fetchWeather()} className="text-body-sm text-kh-accent font-medium">Retry</button>
+            <button onClick={() => fetchWeather()} className="text-body-sm text-kh-accent font-medium">{t.weather.retry}</button>
           </div>
         ) : weather ? (
           <div className="space-y-3 animate-fade-in">
@@ -140,14 +142,14 @@ export default function WeatherPage() {
             <div className="glow-card glow-blue bg-kh-card p-6">
               <div className="flex items-start justify-between mb-6">
                 <div>
-                  <p className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-3">Right Now</p>
+                  <p className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-3">{t.weather.rightNow}</p>
                   <div className="flex items-end gap-1">
                     <span className="font-display text-hero text-kh-text leading-none">
                       {Math.round(weather.current.temp)}°
                     </span>
                   </div>
                   <p className="text-body-sm text-kh-text-muted capitalize mt-2">{weather.current.description}</p>
-                  <p className="text-body-xs text-kh-text-dim mt-1">Feels like {Math.round(weather.current.feels_like)}°</p>
+                  <p className="text-body-xs text-kh-text-dim mt-1">{t.weather.feelsLike} {Math.round(weather.current.feels_like)}°</p>
                 </div>
                 <div className="mt-2">
                   <WeatherIcon icon={weather.current.icon} size={52} />
@@ -156,10 +158,10 @@ export default function WeatherPage() {
 
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { icon: Droplets, value: `${weather.current.humidity}%`, label: "Humidity", color: "text-blue-400" },
-                  { icon: Wind, value: `${weather.current.wind_speed}`, label: "km/h", color: "text-teal-400" },
-                  { icon: Eye, value: `${weather.current.visibility}`, label: "km vis", color: "text-purple-400" },
-                  { icon: Thermometer, value: `${Math.round(weather.current.feels_like)}°`, label: "Feels", color: "text-orange-400" },
+                  { icon: Droplets, value: `${weather.current.humidity}%`, label: t.weather.humidity, color: "text-blue-400" },
+                  { icon: Wind, value: `${weather.current.wind_speed}`, label: t.weather.wind, color: "text-teal-400" },
+                  { icon: Eye, value: `${weather.current.visibility}`, label: t.weather.visibility, color: "text-purple-400" },
+                  { icon: Thermometer, value: `${Math.round(weather.current.feels_like)}°`, label: t.weather.feels, color: "text-orange-400" },
                 ].map((s, i) => (
                   <div key={i} className="text-center p-2 rounded-xl bg-white/[0.03]">
                     <s.icon size={14} className={`${s.color} mx-auto mb-1`} />
@@ -181,12 +183,12 @@ export default function WeatherPage() {
 
             {/* 7-day forecast */}
             <div className="glow-card bg-kh-card p-5">
-              <h2 className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-4">7-Day Forecast</h2>
+              <h2 className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-4">{t.weather.forecast7}</h2>
               <div className="space-y-1">
                 {weather.forecast.map((day, i) => (
                   <div key={i} className="flex items-center gap-3 py-2.5 border-b border-kh-border last:border-0">
                     <div className="w-12 shrink-0">
-                      <p className="text-body-sm font-medium text-kh-text">{i === 0 ? "Today" : day.dayName}</p>
+                      <p className="text-body-sm font-medium text-kh-text">{i === 0 ? t.weather.today : day.dayName}</p>
                     </div>
                     <WeatherIcon icon={day.icon} size={18} />
                     <div className="flex-1 min-w-0">

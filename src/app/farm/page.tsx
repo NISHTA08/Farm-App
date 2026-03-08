@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import BottomNav from "@/components/BottomNav";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import { useI18n } from "@/lib/i18n/context";
 import {
   Sprout,
   Plus,
@@ -20,13 +21,18 @@ import {
 } from "lucide-react";
 import type { MapCenter, BoundaryPoint } from "@/components/FarmMapEditor";
 
+function FarmMapEditorLoading() {
+  const { t } = useI18n();
+  return (
+    <div className="rounded-xl border border-kh-border bg-kh-surface flex items-center justify-center text-kh-text-dim text-body-sm" style={{ height: "320px" }}>
+      {t.farm.loadingMap}
+    </div>
+  );
+}
+
 const FarmMapEditor = dynamic(() => import("@/components/FarmMapEditor"), {
   ssr: false,
-  loading: () => (
-    <div className="rounded-xl border border-kh-border bg-kh-surface flex items-center justify-center text-kh-text-dim text-body-sm" style={{ height: "320px" }}>
-      Loading map…
-    </div>
-  ),
+  loading: () => <FarmMapEditorLoading />,
 });
 
 interface CropZone {
@@ -64,11 +70,13 @@ const defaultFarm: FarmProfile = {
   boundary: [],
 };
 
-const healthConfig = {
-  healthy: { bg: "bg-emerald-500/10 border-emerald-500/20", text: "text-emerald-400", label: "Healthy", dot: "bg-emerald-400" },
-  attention: { bg: "bg-amber-500/10 border-amber-500/20", text: "text-amber-400", label: "Attention", dot: "bg-amber-400" },
-  critical: { bg: "bg-red-500/10 border-red-500/20", text: "text-red-400", label: "Critical", dot: "bg-red-400" },
-};
+function getHealthConfig(t: ReturnType<typeof useI18n>["t"]) {
+  return {
+    healthy: { bg: "bg-emerald-500/10 border-emerald-500/20", text: "text-emerald-400", label: t.farm.healthy, dot: "bg-emerald-400" },
+    attention: { bg: "bg-amber-500/10 border-amber-500/20", text: "text-amber-400", label: t.farm.attention, dot: "bg-amber-400" },
+    critical: { bg: "bg-red-500/10 border-red-500/20", text: "text-red-400", label: t.farm.critical, dot: "bg-red-400" },
+  };
+}
 
 const crops = ["Rice", "Wheat", "Cotton", "Sugarcane", "Maize", "Tomato", "Potato", "Onion", "Soybean", "Groundnut"];
 
@@ -87,7 +95,9 @@ const CROP_META: Record<string, { color: string; short?: string }> = {
 };
 
 export default function FarmPage() {
+  const { t } = useI18n();
   const [farm, setFarm] = useState<FarmProfile>(defaultFarm);
+  const healthConfig = getHealthConfig(t);
   const [showAdd, setShowAdd] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -163,7 +173,7 @@ export default function FarmPage() {
           <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center">
             <Sprout size={20} className="text-violet-400" />
           </div>
-          <h1 className="font-display text-display-sm text-kh-text">My Farm</h1>
+          <h1 className="font-display text-display-sm text-kh-text">{t.farm.title}</h1>
         </div>
       </header>
 

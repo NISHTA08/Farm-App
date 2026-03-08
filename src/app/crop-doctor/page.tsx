@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 import Button from "@/components/ui/Button";
+import { useI18n } from "@/lib/i18n/context";
 import {
   Camera,
   Upload,
@@ -42,6 +43,10 @@ interface ScanRecord {
 }
 
 const HISTORY_KEY = "khethai-scan-history";
+const MAX_IMAGE_DIM = 1024;
+const JPEG_QUALITY = 0.82;
+/** Target max base64 length (~3MB) to stay under Vercel/Groq limits. */
+const MAX_BASE64_LEN = 2_800_000;
 
 function loadHistory(): ScanRecord[] {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; }
@@ -51,7 +56,47 @@ function saveHistory(records: ScanRecord[]) {
   try { localStorage.setItem(HISTORY_KEY, JSON.stringify(records.slice(0, 20))); } catch {}
 }
 
+/** Resize and compress image for API (avoids 413 on phone photos). */
+function compressImageDataUrl(dataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      let w = img.width;
+      let h = img.height;
+      if (w > MAX_IMAGE_DIM || h > MAX_IMAGE_DIM) {
+        if (w > h) {
+          h = Math.round((h * MAX_IMAGE_DIM) / w);
+          w = MAX_IMAGE_DIM;
+        } else {
+          w = Math.round((w * MAX_IMAGE_DIM) / h);
+          h = MAX_IMAGE_DIM;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, w, h);
+      let quality = JPEG_QUALITY;
+      let result = canvas.toDataURL("image/jpeg", quality);
+      while (result.length > MAX_BASE64_LEN && quality > 0.3) {
+        quality -= 0.1;
+        result = canvas.toDataURL("image/jpeg", quality);
+      }
+      resolve(result);
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = dataUrl;
+  });
+}
+
 export default function CropDoctorPage() {
+  const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,8 +115,13 @@ export default function CropDoctorPage() {
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) { setError("Image must be under 10MB"); return; }
     const reader = new FileReader();
-    reader.onload = (ev) => { setImage(ev.target?.result as string); setResult(null); setError(""); };
+    reader.onload = (ev) => {
+      setImage(ev.target?.result as string);
+      setResult(null);
+      setError("");
+    };
     reader.readAsDataURL(file);
+    e.target.value = "";
   }, []);
 
   const handleAnalyze = useCallback(async () => {
@@ -79,10 +129,14 @@ export default function CropDoctorPage() {
     setAnalyzing(true);
     setError("");
     try {
+      let payloadImage = image;
+      if (image.length > MAX_BASE64_LEN) {
+        payloadImage = await compressImageDataUrl(image);
+      }
       const res = await fetch("/api/analyze-crop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image }),
+        body: JSON.stringify({ image: payloadImage }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -112,16 +166,16 @@ export default function CropDoctorPage() {
   const handleReset = () => { setImage(null); setResult(null); setError(""); };
 
   const severityConfig = {
-    low: { color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", label: "Low" },
-    moderate: { color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", label: "Moderate" },
-    severe: { color: "text-red-400", bg: "bg-red-500/10 border-red-500/20", label: "Severe" },
+    low: { color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", label: t.cropDoctor.severityLow },
+    moderate: { color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", label: t.cropDoctor.severityModerate },
+    severe: { color: "text-red-400", bg: "bg-red-500/10 border-red-500/20", label: t.cropDoctor.severitySevere },
   };
 
   const treatmentSections = [
-    { key: "immediate" as const, label: "Immediate Actions", icon: "🚨" },
-    { key: "organic" as const, label: "Organic Treatment", icon: "🌿" },
-    { key: "chemical" as const, label: "Chemical Treatment", icon: "🧪" },
-    { key: "prevention" as const, label: "Prevention", icon: "🛡️" },
+    { key: "immediate" as const, label: t.cropDoctor.immediateActions, icon: "🚨" },
+    { key: "organic" as const, label: t.cropDoctor.organicTreatment, icon: "🌿" },
+    { key: "chemical" as const, label: t.cropDoctor.chemicalTreatment, icon: "🧪" },
+    { key: "prevention" as const, label: t.cropDoctor.prevention, icon: "🛡️" },
   ];
 
   return (
@@ -134,10 +188,10 @@ export default function CropDoctorPage() {
             <Microscope size={20} className="text-emerald-400" />
           </div>
           <div>
-            <h1 className="font-display text-display-sm text-kh-text">AI Crop Doctor</h1>
+            <h1 className="font-display text-display-sm text-kh-text">{t.cropDoctor.title}</h1>
             <p className="text-body-xs text-kh-text-dim flex items-center gap-1">
               <Sparkles size={10} className="text-kh-accent" />
-              Powered by Groq AI
+              {t.cropDoctor.poweredBy}
             </p>
           </div>
         </div>
@@ -148,11 +202,11 @@ export default function CropDoctorPage() {
         <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04]">
           <button onClick={() => setTab("scan")}
             className={`flex-1 py-2 rounded-lg text-body-sm font-medium transition-all ${tab === "scan" ? "gradient-accent text-black" : "text-kh-text-dim hover:text-kh-text-muted"}`}>
-            Scan
+            {t.cropDoctor.scan}
           </button>
           <button onClick={() => setTab("history")}
             className={`flex-1 py-2 rounded-lg text-body-sm font-medium transition-all flex items-center justify-center gap-1.5 ${tab === "history" ? "gradient-accent text-black" : "text-kh-text-dim hover:text-kh-text-muted"}`}>
-            <History size={14} /> History {history.length > 0 && <span className="text-body-xs">({history.length})</span>}
+            <History size={14} /> {t.cropDoctor.history} {history.length > 0 && <span className="text-body-xs">({history.length})</span>}
           </button>
         </div>
       </div>
@@ -163,8 +217,8 @@ export default function CropDoctorPage() {
             {history.length === 0 ? (
               <div className="glow-card bg-kh-card p-10 text-center">
                 <Clock size={32} className="text-kh-text-dim mx-auto mb-3" />
-                <p className="text-body-md text-kh-text-muted mb-1">No scan history</p>
-                <p className="text-body-xs text-kh-text-dim">Your past diagnoses will appear here</p>
+                <p className="text-body-md text-kh-text-muted mb-1">{t.cropDoctor.noHistory}</p>
+                <p className="text-body-xs text-kh-text-dim">{t.cropDoctor.noHistoryDesc}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -192,7 +246,7 @@ export default function CropDoctorPage() {
                 })}
                 <button onClick={() => { saveHistory([]); setHistory([]); }}
                   className="w-full py-3 text-body-xs text-kh-text-dim hover:text-red-400 flex items-center justify-center gap-1.5 transition-colors">
-                  <Trash2 size={12} /> Clear History
+                  <Trash2 size={12} /> {t.cropDoctor.clearHistory}
                 </button>
               </div>
             )}
@@ -205,27 +259,27 @@ export default function CropDoctorPage() {
                 <Leaf size={32} className="text-emerald-400 animate-float" />
               </div>
               <h2 className="font-display text-display-md text-kh-text mb-2">
-                Scan Your Crop
+                {t.cropDoctor.scanYourCrop}
               </h2>
               <p className="text-body-sm text-kh-text-dim mb-8 max-w-[240px] mx-auto">
-                Take a clear photo of the affected leaf or plant
+                {t.cropDoctor.scanSubtitle}
               </p>
 
               <div className="flex flex-col gap-3">
                 <Button fullWidth size="lg" onClick={() => cameraInputRef.current?.click()} icon={<Camera size={18} />}>
-                  Open Camera
+                  {t.cropDoctor.openCamera}
                 </Button>
                 <Button fullWidth size="lg" variant="outline" onClick={() => fileInputRef.current?.click()} icon={<Upload size={18} />}>
-                  Upload Photo
+                  {t.cropDoctor.uploadPhoto}
                 </Button>
               </div>
             </div>
 
             {/* Tips */}
             <div className="mt-4 glow-card bg-kh-card p-5">
-              <h3 className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-3">Tips for best results</h3>
+              <h3 className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-3">{t.cropDoctor.tipsTitle}</h3>
               <div className="grid grid-cols-2 gap-3">
-                {["Natural light", "Focus on leaf", "Include healthy parts", "6-12 inch distance"].map((tip, i) => (
+                {[t.cropDoctor.tip1, t.cropDoctor.tip2, t.cropDoctor.tip3, t.cropDoctor.tip4].map((tip, i) => (
                   <div key={i} className="flex items-center gap-2 text-body-xs text-kh-text-muted">
                     <CheckCircle size={12} className="text-kh-accent shrink-0" />
                     {tip}
@@ -248,8 +302,8 @@ export default function CropDoctorPage() {
                       <div className="absolute inset-0 w-16 h-16 border-2 border-transparent border-t-kh-accent rounded-full animate-spin" />
                       <Sparkles size={20} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-kh-accent" />
                     </div>
-                    <p className="text-body-md text-kh-text font-medium">Analyzing with AI...</p>
-                    <p className="text-body-xs text-kh-text-dim">This may take a few seconds</p>
+                    <p className="text-body-md text-kh-text font-medium">{t.cropDoctor.analyzing}</p>
+                    <p className="text-body-xs text-kh-text-dim">{t.cropDoctor.analyzingDesc}</p>
                   </div>
                 )}
               </div>
@@ -257,8 +311,8 @@ export default function CropDoctorPage() {
 
             {!result && !analyzing && (
               <div className="flex gap-3">
-                <Button variant="outline" onClick={handleReset} icon={<RotateCcw size={16} />}>Retake</Button>
-                <Button fullWidth onClick={handleAnalyze} icon={<Sparkles size={16} />}>Analyze with AI</Button>
+                <Button variant="outline" onClick={handleReset} icon={<RotateCcw size={16} />}>{t.cropDoctor.retake}</Button>
+                <Button fullWidth onClick={handleAnalyze} icon={<Sparkles size={16} />}>{t.cropDoctor.analyzeWithAi}</Button>
               </div>
             )}
 
@@ -268,7 +322,7 @@ export default function CropDoctorPage() {
                   <AlertTriangle size={16} className="text-red-400 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-body-sm text-red-400">{error}</p>
-                    <button onClick={handleAnalyze} className="text-body-xs text-red-400/70 hover:text-red-400 underline mt-1">Try again</button>
+                    <button onClick={handleAnalyze} className="text-body-xs text-red-400/70 hover:text-red-400 underline mt-1">{t.cropDoctor.tryAgain}</button>
                   </div>
                 </div>
               </div>
@@ -281,7 +335,7 @@ export default function CropDoctorPage() {
                 <div className={`glow-card bg-kh-card p-5 ${result.severity === "severe" ? "glow-amber" : "glow-green"}`}>
                   <div className="flex items-start justify-between gap-3 mb-4">
                     <div>
-                      <p className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-1">Detected Disease</p>
+                      <p className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-1">{t.cropDoctor.detectedDisease}</p>
                       <h3 className="font-display text-display-md text-kh-text">{result.disease}</h3>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-body-xs font-semibold uppercase border ${severityConfig[result.severity].bg} ${severityConfig[result.severity].color}`}>
@@ -289,8 +343,8 @@ export default function CropDoctorPage() {
                     </span>
                   </div>
                   <div className="flex gap-6 text-body-sm">
-                    <div><span className="text-kh-text-dim">Crop</span> <span className="text-kh-text ml-1">{result.crop}</span></div>
-                    <div><span className="text-kh-text-dim">Confidence</span> <span className="text-kh-accent font-semibold ml-1">{result.confidence}%</span></div>
+                    <div><span className="text-kh-text-dim">{t.cropDoctor.crop}</span> <span className="text-kh-text ml-1">{result.crop}</span></div>
+                    <div><span className="text-kh-text-dim">{t.cropDoctor.confidence}</span> <span className="text-kh-accent font-semibold ml-1">{result.confidence}%</span></div>
                   </div>
                 </div>
 
@@ -300,7 +354,7 @@ export default function CropDoctorPage() {
 
                 {result.symptoms.length > 0 && (
                   <div className="glow-card bg-kh-card p-5">
-                    <h4 className="text-body-sm font-semibold text-kh-text mb-3">Symptoms</h4>
+                    <h4 className="text-body-sm font-semibold text-kh-text mb-3">{t.cropDoctor.symptoms}</h4>
                     <ul className="space-y-2">
                       {result.symptoms.map((s, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-body-sm text-kh-text-muted">
@@ -339,15 +393,16 @@ export default function CropDoctorPage() {
                   );
                 })}
 
-                <Button fullWidth variant="outline" onClick={handleReset} icon={<RotateCcw size={16} />}>Scan Another Crop</Button>
+                <Button fullWidth variant="outline" onClick={handleReset} icon={<RotateCcw size={16} />}>{t.cropDoctor.scanAnother}</Button>
               </div>
             )}
           </div>
         )}
       </div>
 
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageSelect} />
+      {/* Visible to programmatic click on mobile; not display:none for iOS */}
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="absolute opacity-0 w-0 h-0 overflow-hidden -z-10" aria-hidden />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageSelect} className="absolute opacity-0 w-0 h-0 overflow-hidden -z-10" aria-hidden />
 
       <BottomNav />
     </div>

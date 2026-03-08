@@ -8,18 +8,23 @@ import {
   TrendingUp,
   Sprout,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
-const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Home" },
-  { href: "/crop-doctor", icon: ScanLine, label: "Scan" },
-  { href: "/chat", icon: Sparkles, label: "AI Chat", center: true },
-  { href: "/mandi", icon: TrendingUp, label: "Market" },
-  { href: "/farm", icon: Sprout, label: "Farm" },
-];
+function getNavItems(t: ReturnType<typeof useI18n>["t"]) {
+  return [
+    { href: "/dashboard", icon: LayoutDashboard, label: t.nav.home },
+    { href: "/crop-doctor", icon: ScanLine, label: t.nav.scan },
+    { href: "/chat", icon: Sparkles, label: t.nav.aiChat, center: true },
+    { href: "/mandi", icon: TrendingUp, label: t.nav.market },
+    { href: "/farm", icon: Sprout, label: t.nav.farm },
+  ];
+}
 
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useI18n();
+  const navItems = getNavItems(t);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 safe-bottom">

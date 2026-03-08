@@ -19,63 +19,15 @@ import {
   MessageSquare,
 } from "lucide-react";
 
-const features = [
-  {
-    id: "chat",
-    title: "AI Chat",
-    desc: "Ask farming questions",
-    icon: MessageSquare,
-    href: "/chat",
-    gradient: "from-cyan-500/20 via-cyan-500/5 to-transparent",
-    iconBg: "bg-cyan-500/15",
-    iconColor: "text-cyan-400",
-    glowClass: "glow-blue",
-  },
-  {
-    id: "crop-doctor",
-    title: "AI Crop Doctor",
-    desc: "Scan & diagnose",
-    icon: ScanLine,
-    href: "/crop-doctor",
-    gradient: "from-emerald-500/20 via-emerald-500/5 to-transparent",
-    iconBg: "bg-emerald-500/15",
-    iconColor: "text-emerald-400",
-    glowClass: "glow-green",
-  },
-  {
-    id: "weather",
-    title: "Weather",
-    desc: "7-day forecast",
-    icon: CloudSun,
-    href: "/weather",
-    gradient: "from-blue-500/20 via-blue-500/5 to-transparent",
-    iconBg: "bg-blue-500/15",
-    iconColor: "text-blue-400",
-    glowClass: "glow-blue",
-  },
-  {
-    id: "mandi",
-    title: "Mandi Prices",
-    desc: "Live market rates",
-    icon: TrendingUp,
-    href: "/mandi",
-    gradient: "from-amber-500/20 via-amber-500/5 to-transparent",
-    iconBg: "bg-amber-500/15",
-    iconColor: "text-amber-400",
-    glowClass: "glow-amber",
-  },
-  {
-    id: "farm",
-    title: "My Farm",
-    desc: "Track crops",
-    icon: Sprout,
-    href: "/farm",
-    gradient: "from-violet-500/20 via-violet-500/5 to-transparent",
-    iconBg: "bg-violet-500/15",
-    iconColor: "text-violet-400",
-    glowClass: "glow-violet",
-  },
-];
+function getFeatures(t: ReturnType<typeof useI18n>["t"]) {
+  return [
+    { id: "chat", title: "AI Chat", desc: t.dashboard.chatDesc, icon: MessageSquare, href: "/chat", gradient: "from-cyan-500/20 via-cyan-500/5 to-transparent", iconBg: "bg-cyan-500/15", iconColor: "text-cyan-400", glowClass: "glow-blue" as const },
+    { id: "crop-doctor", title: t.dashboard.cropDoctor, desc: t.dashboard.cropDoctorDesc, icon: ScanLine, href: "/crop-doctor", gradient: "from-emerald-500/20 via-emerald-500/5 to-transparent", iconBg: "bg-emerald-500/15", iconColor: "text-emerald-400", glowClass: "glow-green" as const },
+    { id: "weather", title: t.dashboard.weather, desc: t.dashboard.weatherDesc, icon: CloudSun, href: "/weather", gradient: "from-blue-500/20 via-blue-500/5 to-transparent", iconBg: "bg-blue-500/15", iconColor: "text-blue-400", glowClass: "glow-blue" as const },
+    { id: "mandi", title: t.dashboard.mandiPrices, desc: t.dashboard.mandiPricesDesc, icon: TrendingUp, href: "/mandi", gradient: "from-amber-500/20 via-amber-500/5 to-transparent", iconBg: "bg-amber-500/15", iconColor: "text-amber-400", glowClass: "glow-amber" as const },
+    { id: "farm", title: t.dashboard.myFarm, desc: t.dashboard.myFarmDesc, icon: Sprout, href: "/farm", gradient: "from-violet-500/20 via-violet-500/5 to-transparent", iconBg: "bg-violet-500/15", iconColor: "text-violet-400", glowClass: "glow-violet" as const },
+  ];
+}
 
 export default function DashboardPage() {
   const { t } = useI18n();
@@ -101,8 +53,8 @@ export default function DashboardPage() {
       <div className="orb w-[400px] h-[400px] bg-emerald-600/25 -top-48 -right-32 animate-float" />
       <div className="orb w-[300px] h-[300px] bg-blue-600/15 top-[600px] -left-40 animate-float" style={{ animationDelay: "2s" }} />
 
-      {/* Header */}
-      <header className="relative z-10 px-6 pt-5 pb-2">
+      {/* Header - z-20 so language/logout stay tappable above orbs */}
+      <header className="relative z-20 px-6 pt-5 pb-2">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center">
@@ -110,7 +62,7 @@ export default function DashboardPage() {
             </div>
             <span className="text-body-md font-semibold tracking-tight">{t.common.appName}</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 relative z-20">
             <LanguageSwitcher />
             <button onClick={handleLogout}
               className="p-2 rounded-lg text-kh-text-dim hover:text-kh-text-muted hover:bg-white/5 transition-all"
@@ -124,10 +76,10 @@ export default function DashboardPage() {
       {/* Hero */}
       <section className="relative z-10 px-6 pt-8 pb-8">
         <div className="max-w-lg mx-auto">
-          <p className="text-body-xs text-kh-text-dim tracking-[0.15em] uppercase mb-2">Welcome back</p>
+          <p className="text-body-xs text-kh-text-dim tracking-[0.15em] uppercase mb-2">{t.common.welcomeBack}</p>
           <h1 className="font-display text-hero text-kh-text leading-[1.05] mb-4">
-            <span className="text-gradient">smart</span> farming,
-            <br />better harvest
+            <span className="text-gradient">{t.common.taglineLine1.split(" ")[0]}</span> {t.common.taglineLine1.split(" ").slice(1).join(" ")}
+            <br />{t.common.taglineLine2}
           </h1>
         </div>
       </section>
@@ -144,11 +96,11 @@ export default function DashboardPage() {
                 <Sparkles size={22} className="text-black" />
               </div>
               <div className="flex-1">
-                <h2 className="text-body-lg font-semibold text-kh-text">AI Farming Assistant</h2>
+                <h2 className="text-body-lg font-semibold text-kh-text">{t.dashboard.aiAssistantTitle}</h2>
                 <p className="text-body-xs text-kh-text-dim mt-0.5 flex items-center gap-1.5">
-                  Ask anything about crops, diseases & schemes
+                  {t.dashboard.aiAssistantDesc}
                   <Mic size={10} className="text-kh-accent" />
-                  Voice enabled
+                  {t.dashboard.voiceEnabled}
                 </p>
               </div>
               <ArrowUpRight size={16} className="text-kh-text-dim group-hover:text-kh-accent transition-colors" />
@@ -162,7 +114,7 @@ export default function DashboardPage() {
         <div className="max-w-lg mx-auto">
           <h2 className="text-body-sm font-semibold text-kh-text-muted mb-3">{t.dashboard.title}</h2>
           <div className="grid grid-cols-2 gap-3">
-          {features.map((feature, index) => {
+          {getFeatures(t).map((feature, index) => {
             const Icon = feature.icon;
             return (
               <button
@@ -197,8 +149,8 @@ export default function DashboardPage() {
               <Landmark size={18} className="text-blue-400" />
             </div>
             <div className="flex-1">
-              <h3 className="text-body-sm font-semibold text-kh-text">Government Schemes</h3>
-              <p className="text-body-xs text-kh-text-dim">PM-KISAN, PMFBY, KCC & more</p>
+              <h3 className="text-body-sm font-semibold text-kh-text">{t.dashboard.govtSchemes}</h3>
+              <p className="text-body-xs text-kh-text-dim">{t.dashboard.govtSchemesDesc}</p>
             </div>
             <ArrowUpRight size={14} className="text-kh-text-dim group-hover:text-blue-400 transition-colors shrink-0" />
           </button>

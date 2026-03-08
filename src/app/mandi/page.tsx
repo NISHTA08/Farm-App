@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import BottomNav from "@/components/BottomNav";
+import { useI18n } from "@/lib/i18n/context";
 import {
   TrendingUp,
   Minus,
@@ -33,15 +34,17 @@ interface MandiData {
   error?: string;
 }
 
-const categories = [
-  { id: "all", label: "All" },
-  { id: "cereals", label: "Cereals" },
-  { id: "pulses", label: "Pulses" },
-  { id: "vegetables", label: "Vegs" },
-  { id: "fruits", label: "Fruits" },
-  { id: "spices", label: "Spices" },
-  { id: "oilseeds", label: "Oilseeds" },
-];
+function getCategories(t: ReturnType<typeof useI18n>["t"]) {
+  return [
+    { id: "all", label: t.mandi.all },
+    { id: "cereals", label: t.mandi.cereals },
+    { id: "pulses", label: t.mandi.pulses },
+    { id: "vegetables", label: t.mandi.vegetables },
+    { id: "fruits", label: t.mandi.fruits },
+    { id: "spices", label: t.mandi.spices },
+    { id: "oilseeds", label: t.mandi.oilseeds },
+  ];
+}
 
 const STATES = [
   "All India",
@@ -61,6 +64,7 @@ const STATES = [
 ];
 
 export default function MandiPage() {
+  const { t } = useI18n();
   const [data, setData] = useState<MandiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -84,10 +88,10 @@ export default function MandiPage() {
       }
       setData(data);
     } catch {
-      setError("Could not load market prices");
+      setError(t.mandi.loadError);
     }
     finally { setLoading(false); }
-  }, [activeCategory, location]);
+  }, [activeCategory, location, t]);
 
   useEffect(() => { fetchPrices(); }, [fetchPrices]);
 
@@ -111,9 +115,9 @@ export default function MandiPage() {
                 <TrendingUp size={20} className="text-amber-400" />
               </div>
               <div>
-                <h1 className="font-display text-display-sm text-kh-text">Mandi Prices</h1>
+                <h1 className="font-display text-display-sm text-kh-text">{t.mandi.title}</h1>
                 <p className="text-body-xs text-kh-text-dim">
-                  {data ? `Updated ${data.lastUpdated} · data.gov.in` : "Loading..."}
+                  {data ? `${t.mandi.updated} ${data.lastUpdated} · data.gov.in` : t.mandi.loading}
                 </p>
               </div>
             </div>
@@ -145,7 +149,7 @@ export default function MandiPage() {
             <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-kh-text-dim" />
             <input
               type="text"
-              placeholder="Search crop or market..."
+              placeholder={t.mandi.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-kh-surface border border-kh-border rounded-xl
@@ -156,7 +160,7 @@ export default function MandiPage() {
 
           {/* Categories */}
           <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
-            {categories.map((cat) => (
+            {getCategories(t).map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
@@ -185,12 +189,12 @@ export default function MandiPage() {
           <div className="glow-card bg-kh-card p-10 text-center">
             <TrendingUp size={36} className="text-kh-text-dim mx-auto mb-3" />
             <p className="text-body-md text-kh-text-muted mb-4">{error}</p>
-            <button onClick={fetchPrices} className="text-body-sm text-kh-accent font-medium">Retry</button>
+            <button onClick={fetchPrices} className="text-body-sm text-kh-accent font-medium">{t.common.retry}</button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="glow-card bg-kh-card p-10 text-center">
             <Filter size={32} className="text-kh-text-dim mx-auto mb-3" />
-            <p className="text-body-md text-kh-text-muted">No results found</p>
+            <p className="text-body-md text-kh-text-muted">{t.mandi.noResults}</p>
           </div>
         ) : (
           <div className="space-y-2 animate-fade-in">

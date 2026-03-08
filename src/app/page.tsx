@@ -3,9 +3,11 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Leaf } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 export default function Home() {
   const router = useRouter();
+  const { t } = useI18n();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -27,10 +29,10 @@ export default function Home() {
         </div>
 
         <h1 className="font-display text-display-xl text-kh-text mb-2 tracking-tight">
-          KhethAi
+          {t.common.appName}
         </h1>
-        <p className="text-body-sm text-kh-text-dim tracking-[0.2em] uppercase">
-          smart farming
+        <p className="text-body-sm text-kh-text-dim tracking-[0.2em] uppercase max-w-[200px] mx-auto">
+          {t.common.tagline}
         </p>
 
         <div className="mt-16">

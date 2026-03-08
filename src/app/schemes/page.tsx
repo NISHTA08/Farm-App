@@ -1,6 +1,7 @@
 "use client";
 
 import BottomNav from "@/components/BottomNav";
+import { useI18n } from "@/lib/i18n/context";
 import {
   Landmark,
   IndianRupee,
@@ -193,6 +194,7 @@ const schemes: Scheme[] = [
 ];
 
 export default function SchemesPage() {
+  const { t } = useI18n();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
@@ -206,8 +208,8 @@ export default function SchemesPage() {
             <Landmark size={20} className="text-blue-400" />
           </div>
           <div>
-            <h1 className="font-display text-display-sm text-kh-text">Govt Schemes</h1>
-            <p className="text-body-xs text-kh-text-dim">{schemes.length} schemes for farmers</p>
+            <h1 className="font-display text-display-sm text-kh-text">{t.schemes.title}</h1>
+            <p className="text-body-xs text-kh-text-dim">{schemes.length} {t.schemes.schemesForFarmers}</p>
           </div>
         </div>
       </header>
@@ -247,7 +249,7 @@ export default function SchemesPage() {
                   <p className="text-body-sm text-kh-text-secondary leading-relaxed">{scheme.description}</p>
 
                   <div>
-                    <h4 className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-2">Eligibility</h4>
+                    <h4 className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-2">{t.schemes.eligibility}</h4>
                     <ul className="space-y-1.5">
                       {scheme.eligibility.map((e, j) => (
                         <li key={j} className="flex items-start gap-2 text-body-sm text-kh-text-muted">
@@ -258,7 +260,7 @@ export default function SchemesPage() {
                   </div>
 
                   <div>
-                    <h4 className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-2">How to Apply</h4>
+                    <h4 className="text-body-xs text-kh-text-dim uppercase tracking-wider mb-2">{t.schemes.howToApply}</h4>
                     <ol className="space-y-1.5">
                       {scheme.howToApply.map((s, j) => (
                         <li key={j} className="flex items-start gap-2 text-body-sm text-kh-text-muted">
@@ -274,7 +276,7 @@ export default function SchemesPage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-body-sm text-kh-accent font-medium hover:underline"
                   >
-                    Visit Official Website <ExternalLink size={13} />
+                    {t.schemes.visitWebsite} <ExternalLink size={13} />
                   </a>
                 </div>
               )}
