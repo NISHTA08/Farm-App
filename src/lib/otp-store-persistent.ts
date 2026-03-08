@@ -59,7 +59,7 @@ export async function verifyOtp(
   const redis = getRedis();
   if (redis) {
     const key = `${OTP_KEY_PREFIX}${phone}`;
-    const raw = await redis.get<string>(key);
+    const raw = await redis.get(key);
     if (!raw) {
       return { valid: false, error: "OTP expired or not found. Please request a new one." };
     }
