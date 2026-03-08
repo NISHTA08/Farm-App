@@ -97,15 +97,12 @@ const suggestions = [
   "Current market price trends for soybean",
 ];
 
+const emptyHistory: Record<ChatProvider, ChatMessage[]> = { groq: [], aws: [] };
+const emptySaved: Record<ChatProvider, SavedThread[]> = { groq: [], aws: [] };
+
 export default function ChatPage() {
-  const [messagesByProvider, setMessagesByProvider] = useState<Record<ChatProvider, ChatMessage[]>>(() => ({
-    groq: loadHistory(HISTORY_GROQ_KEY),
-    aws: loadHistory(HISTORY_AWS_KEY),
-  }));
-  const [savedThreadsByProvider, setSavedThreadsByProvider] = useState<Record<ChatProvider, SavedThread[]>>(() => ({
-    groq: loadSavedThreads("groq"),
-    aws: loadSavedThreads("aws"),
-  }));
+  const [messagesByProvider, setMessagesByProvider] = useState<Record<ChatProvider, ChatMessage[]>>(emptyHistory);
+  const [savedThreadsByProvider, setSavedThreadsByProvider] = useState<Record<ChatProvider, SavedThread[]>>(emptySaved);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [provider, setProvider] = useState<ChatProvider>("groq");
@@ -114,17 +111,28 @@ export default function ChatPage() {
   const [voiceLangOpen, setVoiceLangOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasHydratedRef = useRef(false);
 
   const messages = messagesByProvider[provider];
   const savedThreads = savedThreadsByProvider[provider];
   const voiceLangLabel = VOICE_LANGUAGES.find((o) => o.value === voiceLang)?.label ?? "Any (browser)";
 
   useEffect(() => {
+    if (hasHydratedRef.current) return;
+    hasHydratedRef.current = true;
     try {
       const saved = localStorage.getItem(CHAT_PROVIDER_KEY);
       if (saved === "aws" || saved === "groq") setProvider(saved);
       const v = localStorage.getItem(VOICE_LANG_KEY);
       if (v !== null) setVoiceLang(v);
+      setMessagesByProvider({
+        groq: loadHistory(HISTORY_GROQ_KEY),
+        aws: loadHistory(HISTORY_AWS_KEY),
+      });
+      setSavedThreadsByProvider({
+        groq: loadSavedThreads("groq"),
+        aws: loadSavedThreads("aws"),
+      });
     } catch {}
   }, []);
 

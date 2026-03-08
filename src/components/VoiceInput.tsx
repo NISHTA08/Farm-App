@@ -21,6 +21,7 @@ export default function VoiceInput({ onResult, lang = "", className = "" }: Voic
   const isListeningRef = useRef(false);
   const restartCountRef = useRef(0);
   const restartResetAtRef = useRef(0);
+  const listeningStartedAtRef = useRef(0);
   const onResultRef = useRef(onResult);
   const langRef = useRef(lang);
   onResultRef.current = onResult;
@@ -52,16 +53,40 @@ export default function VoiceInput({ onResult, lang = "", className = "" }: Voic
     };
 
     const maybeRestart = () => {
+      if (!isListeningRef.current) return;
       const now = Date.now();
-      if (now - restartResetAtRef.current > 3000) {
-        restartCountRef.current = 0;
+      const listeningDuration = now - listeningStartedAtRef.current;
+      if (listeningDuration > 8000) {
         restartResetAtRef.current = now;
+        restartCountRef.current = 0;
       }
       restartCountRef.current++;
-      if (restartCountRef.current <= 15 && isListeningRef.current) {
+      const maxRestartsInWindow = 60;
+      const windowMs = 15000;
+      if (now - restartResetAtRef.current > windowMs) {
+        restartResetAtRef.current = now;
+        restartCountRef.current = 0;
+      }
+      if (restartCountRef.current <= maxRestartsInWindow) {
         setTimeout(() => {
-          if (isListeningRef.current) startRecognition();
-        }, 100);
+          if (isListeningRef.current) {
+            try {
+              const r = new SR();
+              if (langRef.current) r.lang = langRef.current;
+              r.continuous = true;
+              r.interimResults = true;
+              r.maxAlternatives = 2;
+              r.onresult = recognition.onresult;
+              r.onerror = recognition.onerror;
+              r.onend = recognition.onend;
+              r.start();
+              recognitionRef.current = r;
+            } catch {
+              setListening(false);
+              isListeningRef.current = false;
+            }
+          }
+        }, 250);
       } else {
         setListening(false);
         isListeningRef.current = false;
@@ -109,6 +134,7 @@ export default function VoiceInput({ onResult, lang = "", className = "" }: Voic
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+      listeningStartedAtRef.current = Date.now();
       requestAnimationFrame(() => {
         if (!isListeningRef.current) return;
         startRecognition();

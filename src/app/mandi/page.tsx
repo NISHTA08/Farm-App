@@ -43,12 +43,30 @@ const categories = [
   { id: "oilseeds", label: "Oilseeds" },
 ];
 
+const STATES = [
+  "All India",
+  "Andhra Pradesh",
+  "Bihar",
+  "Gujarat",
+  "Haryana",
+  "Karnataka",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Punjab",
+  "Rajasthan",
+  "Tamil Nadu",
+  "Telangana",
+  "Uttar Pradesh",
+  "West Bengal",
+];
+
 export default function MandiPage() {
   const [data, setData] = useState<MandiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
+  const [location, setLocation] = useState("All India");
 
   const fetchPrices = useCallback(async () => {
     setLoading(true);
@@ -56,6 +74,7 @@ export default function MandiPage() {
     try {
       const params = new URLSearchParams();
       if (activeCategory !== "all") params.set("category", activeCategory);
+      if (location && location !== "All India") params.set("state", location);
       const res = await fetch(`/api/mandi?${params.toString()}`);
       const data = await res.json();
       if (data?.error) {
@@ -68,7 +87,7 @@ export default function MandiPage() {
       setError("Could not load market prices");
     }
     finally { setLoading(false); }
-  }, [activeCategory]);
+  }, [activeCategory, location]);
 
   useEffect(() => { fetchPrices(); }, [fetchPrices]);
 
@@ -94,7 +113,7 @@ export default function MandiPage() {
               <div>
                 <h1 className="font-display text-display-sm text-kh-text">Mandi Prices</h1>
                 <p className="text-body-xs text-kh-text-dim">
-                  {data ? `Updated ${data.lastUpdated}` : "Loading..."}
+                  {data ? `Updated ${data.lastUpdated} · data.gov.in` : "Loading..."}
                 </p>
               </div>
             </div>
@@ -102,6 +121,23 @@ export default function MandiPage() {
               className="p-2 rounded-lg text-kh-text-dim hover:text-kh-text-muted hover:bg-white/5 transition-all disabled:opacity-40">
               <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
             </button>
+          </div>
+
+          {/* Location filter */}
+          <div className="mb-3">
+            <label className="text-body-xs text-kh-text-dim mb-1.5 block flex items-center gap-1">
+              <MapPin size={12} /> Location (state)
+            </label>
+            <select
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="w-full px-4 py-2.5 bg-kh-surface border border-kh-border rounded-xl text-body-sm text-kh-text
+                focus:outline-none focus:border-amber-500/50 transition-all [color-scheme:dark]"
+            >
+              {STATES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </div>
 
           {/* Search */}
@@ -180,11 +216,11 @@ export default function MandiPage() {
                   <div>
                     <p className="text-body-lg font-semibold text-kh-text">
                       {fmt(price.modal_price)}
-                      <span className="text-body-xs text-kh-text-dim font-normal">/{price.unit}</span>
+                      <span className="text-body-xs text-kh-text-dim font-normal">/kg</span>
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-kh-text-dim">{fmt(price.min_price)} – {fmt(price.max_price)}</p>
+                    <p className="text-[10px] text-kh-text-dim">{fmt(price.min_price)} – {fmt(price.max_price)}/kg</p>
                     <div className="flex items-center gap-0.5 text-[10px] text-kh-text-dim mt-0.5 justify-end">
                       <MapPin size={8} /> {price.market}
                     </div>
