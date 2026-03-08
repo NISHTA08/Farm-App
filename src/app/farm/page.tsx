@@ -10,7 +10,6 @@ import {
   Sprout,
   Plus,
   Calendar,
-  Ruler,
   Trash2,
   Check,
   Leaf,
@@ -130,6 +129,15 @@ const CROP_KG_PER_PLANT: Record<string, number> = {
 
 const EXPECTED_YIELD_UNITS = ["kg", "quintals", "plants"] as const;
 type ExpectedYieldUnit = (typeof EXPECTED_YIELD_UNITS)[number];
+
+function getUnitLabel(unit: ExpectedYieldUnit, t: ReturnType<typeof useI18n>["t"]): string {
+  switch (unit) {
+    case "kg": return t.farm.unitKg;
+    case "quintals": return t.farm.unitQuintals;
+    case "plants": return t.farm.unitPlants;
+    default: return unit;
+  }
+}
 
 function getZoneProgress(zone: CropZone): { progressPct: number; hasDates: boolean } {
   if (!zone.plantingDate || !zone.expectedHarvest) return { progressPct: 0, hasDates: false };
@@ -507,9 +515,9 @@ export default function FarmPage() {
                     className="flex-1 px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text min-h-[44px] [color-scheme:dark]" />
                   <select value={newZone.expectedYieldUnit} onChange={(e) => setNewZone((prev) => ({ ...prev, expectedYieldUnit: e.target.value as ExpectedYieldUnit }))}
                     className="px-3 py-2.5 bg-kh-surface border border-kh-border rounded-lg text-body-sm text-kh-text min-h-[44px] [color-scheme:dark]">
-                    <option value="kg">{t.farm.unitKg}</option>
-                    <option value="quintals">{t.farm.unitQuintals}</option>
-                    <option value="plants">{t.farm.unitPlants}</option>
+                    {EXPECTED_YIELD_UNITS.map((u) => (
+                      <option key={u} value={u}>{getUnitLabel(u, t)}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -683,9 +691,9 @@ export default function FarmPage() {
                                     className="flex-1 min-w-0 px-2 py-1.5 bg-kh-surface border border-kh-border rounded-lg text-body-xs text-kh-text [color-scheme:dark]" />
                                   <select value={zone.expectedYieldUnit ?? (zone.expectedYieldKg ? "kg" : "plants")} onChange={(e) => updateZone(zone.id, { expectedYieldUnit: e.target.value as ExpectedYieldUnit })}
                                     className="shrink-0 px-2 py-1.5 bg-kh-surface border border-kh-border rounded-lg text-body-xs text-kh-text [color-scheme:dark]">
-                                    <option value="kg">{t.farm.unitKg}</option>
-                                    <option value="quintals">{t.farm.unitQuintals}</option>
-                                    <option value="plants">{t.farm.unitPlants}</option>
+                                    {EXPECTED_YIELD_UNITS.map((u) => (
+                                      <option key={u} value={u}>{getUnitLabel(u, t)}</option>
+                                    ))}
                                   </select>
                                 </div>
                               </div>
